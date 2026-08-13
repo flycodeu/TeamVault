@@ -1,0 +1,17 @@
+services:
+  teamvault:
+    build: .
+    container_name: teamvault
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      TEAMVAULT_APP_ROOT: /app
+      TEAMVAULT_DATABASE_PATH: /app/data/teamvault.db
+      TEAMVAULT_MASTER_KEY: ${TEAMVAULT_MASTER_KEY}
+      TEAMVAULT_SESSION_DAYS: ${TEAMVAULT_SESSION_DAYS:-14}
+      TEAMVAULT_ADMIN_USERNAME: ${TEAMVAULT_ADMIN_USERNAME:-admin}
+      TEAMVAULT_ADMIN_DISPLAY_NAME: ${TEAMVAULT_ADMIN_DISPLAY_NAME:-TeamVault Admin}
+      TEAMVAULT_ADMIN_PASSWORD: ${TEAMVAULT_ADMIN_PASSWORD}
+    volumes:
+      - ./data:/app/data

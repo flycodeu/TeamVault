@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX `group_member_unique_idx` ON `group_member` (`group_id`,`user_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `resource_permission_subject_idx` ON `resource_permission` (`resource_id`,`subject_type`,`subject_id`);

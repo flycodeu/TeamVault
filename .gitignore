@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+.idea/
+*.iml
+*.tsbuildinfo
+.env
+.env.local
+data/*
+!data/.gitkeep
+!data/files/
+!data/previews/
+!data/thumbnails/
+!data/temp/
+!data/**/.gitkeep
+npm-debug.log*

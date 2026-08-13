@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f7f8f6;
+  --foreground: #171b19;
+  --card: #ffffff;
+  --card-foreground: #171b19;
+  --popover: #ffffff;
+  --popover-foreground: #171b19;
+  --primary: #126455;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1ee;
+  --secondary-foreground: #252b28;
+  --muted: #eef1ee;
+  --muted-foreground: #65706a;
+  --accent: #e4f0ec;
+  --accent-foreground: #174e43;
+  --destructive: #b42318;
+  --border: #dfe4e0;
+  --input: #cfd6d1;
+  --ring: #258776;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: #111412;
+  --foreground: #edf1ee;
+  --card: #171b18;
+  --card-foreground: #edf1ee;
+  --popover: #171b18;
+  --popover-foreground: #edf1ee;
+  --primary: #65c7ad;
+  --primary-foreground: #0b2a23;
+  --secondary: #202521;
+  --secondary-foreground: #e3e8e4;
+  --muted: #202521;
+  --muted-foreground: #9ba69f;
+  --accent: #1b352e;
+  --accent-foreground: #92d9c6;
+  --destructive: #f97066;
+  --border: #2a302c;
+  --input: #39413b;
+  --ring: #65c7ad;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --font-sans: "Aptos", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+button,
+a,
+input {
+  letter-spacing: 0;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 24%, transparent);
+}
