@@ -4,20 +4,22 @@ import { createHash, randomUUID } from "node:crypto"
 import fs from "node:fs/promises"
 import path from "node:path"
 
+import { allowedFileExtensions, storageDirectoryForExtension } from "@/lib/file/kinds"
+
 const root = path.resolve(process.cwd(), "data", "files")
-const allowed = new Set(["pdf", "ppt", "pptx", "doc", "docx", "xls", "xlsx", "png", "jpg", "jpeg", "webp", "gif", "txt", "md", "json", "xml", "yaml", "yml", "sql", "log", "csv", "zip"])
+const allowed = new Set<string>(allowedFileExtensions)
 const maxBytes = 500 * 1024 * 1024
 
 export function validateUpload(file: File) {
   const extension = path.extname(file.name).slice(1).toLowerCase()
-  if (!allowed.has(extension)) throw new Error("不支持的文件类型")
+  if (!allowed.has(extension)) throw new Error(`不支持${extension ? ` .${extension}` : "该"}文件。支持 PDF、Office、图片（含 SVG）、文本、CSV 和 ZIP`)
   if (file.size <= 0 || file.size > maxBytes) throw new Error("文件大小必须在 1B 到 500MB 之间")
   return extension
 }
 
 export async function persistUpload(file: File, extension: string) {
   const now = new Date()
-  const relativeDir = path.join(String(now.getFullYear()), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0"))
+  const relativeDir = path.join(storageDirectoryForExtension(extension), String(now.getFullYear()), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0"))
   const directory = path.join(root, relativeDir)
   await fs.mkdir(directory, { recursive: true })
   const storageName = `${randomUUID()}.${extension}`

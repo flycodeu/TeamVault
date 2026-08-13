@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth/session"
 import { db } from "@/lib/db"
 import { files, resources } from "@/lib/db/schema"
+import { normalizeUploadMimeType } from "@/lib/file/kinds"
 import { persistUpload, validateUpload } from "@/lib/storage/files"
 import { canEditResource } from "@/lib/permission"
 import { enqueuePreview } from "@/lib/preview/worker"
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   try {
     const extension = validateUpload(file)
     const saved = await persistUpload(file, extension)
-    const [record] = await db.insert(files).values({ resourceId, originalName: file.name.slice(0, 255), ...saved, mimeType: file.type || "application/octet-stream", extension, createdBy: user.id }).returning({ id: files.id })
+    const [record] = await db.insert(files).values({ resourceId, originalName: file.name.slice(0, 255), ...saved, mimeType: normalizeUploadMimeType(file.type, extension), extension, createdBy: user.id }).returning({ id: files.id })
     await enqueuePreview(record.id, extension)
     return NextResponse.json({ success: true, data: record }, { status: 201 })
   } catch (error) {

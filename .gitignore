@@ -12,5 +12,9 @@ data/*
 !data/previews/
 !data/thumbnails/
 !data/temp/
+data/files/*
+data/previews/*
+data/thumbnails/*
+data/temp/*
 !data/**/.gitkeep
 npm-debug.log*

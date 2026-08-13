@@ -9,7 +9,7 @@ export const usernameSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(10, "密码至少需要 10 个字符")
+  .min(6, "密码至少需要 6 个字符")
   .max(128, "密码不能超过 128 个字符")
 
 export const loginSchema = z.object({

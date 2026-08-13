@@ -28,6 +28,17 @@ export async function createResourceLink(resourceId: string, input: z.infer<type
   return { success: true, data: link }
 }
 
+export async function updateResourceLink(id: string, input: z.infer<typeof resourceLinkSchema>): Promise<ActionResult> {
+  const link = await db.query.resourceLinks.findFirst({ where: eq(resourceLinks.id, id) })
+  if (!link || !(await canEditResource(link.resourceId))) return { success: false, error: "无权编辑该内容" }
+  const parsed = resourceLinkSchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "链接信息无效" }
+  await db.update(resourceLinks).set({ ...parsed.data, updatedAt: new Date() }).where(eq(resourceLinks.id, id))
+  revalidatePath(`/resources/${link.resourceId}`)
+  revalidatePath("/resources")
+  return { success: true, data: undefined }
+}
+
 export async function deleteResourceLink(id: string): Promise<ActionResult> {
   const link = await db.query.resourceLinks.findFirst({ where: eq(resourceLinks.id, id) })
   if (!link || !(await canEditResource(link.resourceId))) return { success: false, error: "无权删除该内容" }
