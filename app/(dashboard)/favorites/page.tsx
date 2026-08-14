@@ -63,42 +63,42 @@ export default async function FavoritesPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8 space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">我的收藏</h1>
-          <span className="rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-300 px-2.5 py-0.5 text-xs font-semibold">
-            {total}
-          </span>
-        </div>
-        <Button asChild className="h-9 gap-1.5 font-medium shadow-xs shrink-0">
-          <Link href="/resources">
-            <Plus className="size-4" />
-            <span>浏览并添加收藏</span>
-          </Link>
-        </Button>
-      </div>
+      {/* Compact Header & Filter Bar */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <span className="rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-300 px-2.5 py-0.5 text-[11px] font-semibold shrink-0">
+          共 {total} 项
+        </span>
 
-      <form className="flex gap-2 max-w-lg">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            name="q"
-            defaultValue={q}
-            placeholder="搜索收藏的名称、分类或说明..."
-            className="h-9 border-border/80 bg-card pl-9 text-xs shadow-xs"
-          />
-        </div>
-        <Button type="submit" variant="outline" size="sm" className="h-9 text-xs font-medium">
-          搜索
-        </Button>
-        {q ? (
-          <Button variant="ghost" size="sm" className="h-9 text-xs" asChild>
-            <Link href="/favorites">
-              <X className="size-3.5 mr-1" /> 清除
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <form className="flex gap-2 flex-1 md:w-[320px]">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                name="q"
+                defaultValue={q}
+                placeholder="搜索收藏的名称、分类或说明..."
+                className="h-9 border-border/80 bg-card pl-9 text-xs shadow-xs w-full"
+              />
+            </div>
+            {q ? (
+              <Button variant="ghost" size="sm" className="h-9 text-xs px-2.5" asChild>
+                <Link href="/favorites">
+                  <X className="size-3.5" />
+                </Link>
+              </Button>
+            ) : null}
+          </form>
+
+          <div className="h-4 w-[1px] bg-border mx-1 hidden sm:block"></div>
+
+          <Button asChild className="h-9 gap-1.5 font-medium shadow-xs shrink-0">
+            <Link href="/resources">
+              <Plus className="size-4" />
+              <span className="hidden sm:inline-block">浏览并添加收藏</span>
             </Link>
           </Button>
-        ) : null}
-      </form>
+        </div>
+      </div>
 
       {pageRows.length ? (
         <>

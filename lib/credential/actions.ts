@@ -29,7 +29,7 @@ export async function createCredential(resourceId: string, input: CredentialInpu
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "凭据信息无效" }
   let credentialId = ""
   db.transaction(tx => {
-    const credential = tx.insert(credentials).values({ resourceId, name: parsed.data.name, type: parsed.data.type, username: parsed.data.username, secretCipher: encryptSecret(parsed.data.secret), extraCipher: parsed.data.extra ? encryptSecret(parsed.data.extra) : null, description: parsed.data.description, accessMode: parsed.data.accessMode, createdBy: user.id }).returning({ id: credentials.id }).get()
+    const credential = tx.insert(credentials).values({ resourceId, linkId: parsed.data.linkId, name: parsed.data.name, type: parsed.data.type, username: parsed.data.username, secretCipher: encryptSecret(parsed.data.secret), extraCipher: parsed.data.extra ? encryptSecret(parsed.data.extra) : null, description: parsed.data.description, accessMode: parsed.data.accessMode, createdBy: user.id }).returning({ id: credentials.id }).get()
     credentialId = credential.id
     if (parsed.data.accessMode === "RESTRICTED" && parsed.data.subjects.length) {
       tx.insert(credentialPermissions).values(parsed.data.subjects.map(subject => ({ credentialId, ...subject }))).run()

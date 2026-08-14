@@ -60,6 +60,16 @@ export const resourceCollections = sqliteTable("resource_collection", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
 })
 
+export const memos = sqliteTable("memo", {
+  id: text("id").primaryKey().$defaultFn(() => randomUUID()),
+  content: text("content").notNull(),
+  color: text("color").notNull().default("bg-card"),
+  visibility: text("visibility", { enum: ["PRIVATE", "TEAM"] }).notNull().default("PRIVATE"),
+  createdBy: text("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+})
+
 export const resources = sqliteTable(
   "resource",
   {
@@ -88,8 +98,13 @@ export const resources = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    parentId: text("parent_id"),
   },
-  (table) => [index("resource_owner_idx").on(table.ownerId), index("resource_status_idx").on(table.status)],
+  (table) => [
+    index("resource_owner_idx").on(table.ownerId), 
+    index("resource_status_idx").on(table.status),
+    index("resource_parent_idx").on(table.parentId)
+  ],
 )
 
 export const resourceFavorites = sqliteTable(
@@ -114,6 +129,7 @@ export const resourceLinks = sqliteTable(
     title: text("title").notNull(),
     url: text("url").notNull(),
     description: text("description"),
+    accessMode: text("access_mode", { enum: ["RESOURCE", "RESTRICTED"] }).notNull().default("RESOURCE"),
     createdBy: text("created_by").notNull().references(() => users.id),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
@@ -121,11 +137,20 @@ export const resourceLinks = sqliteTable(
   (table) => [index("resource_link_resource_idx").on(table.resourceId)],
 )
 
+export const resourceLinkPermissions = sqliteTable("resource_link_permission", {
+  id: text("id").primaryKey().$defaultFn(() => randomUUID()),
+  linkId: text("link_id").notNull().references(() => resourceLinks.id, { onDelete: "cascade" }),
+  subjectType: text("subject_type", { enum: ["USER", "GROUP"] }).notNull(),
+  subjectId: text("subject_id").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+}, (table) => [uniqueIndex("resource_link_permission_subject_idx").on(table.linkId, table.subjectType, table.subjectId)])
+
 export const credentials = sqliteTable(
   "credential",
   {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     resourceId: text("resource_id").notNull().references(() => resources.id, { onDelete: "cascade" }),
+    linkId: text("link_id").references(() => resourceLinks.id, { onDelete: "set null" }),
     name: text("name").notNull(),
     type: text("type", { enum: ["PASSWORD", "API_KEY", "TOKEN", "SSH", "DATABASE", "ACCESS_KEY", "TOTP", "OTHER"] }).notNull().default("PASSWORD"),
     username: text("username"),
@@ -137,7 +162,7 @@ export const credentials = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
-  (table) => [index("credential_resource_idx").on(table.resourceId)],
+  (table) => [index("credential_resource_idx").on(table.resourceId), index("credential_link_idx").on(table.linkId)],
 )
 
 export const auditLogs = sqliteTable(

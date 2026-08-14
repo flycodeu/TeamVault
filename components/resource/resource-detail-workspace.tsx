@@ -1,26 +1,29 @@
 "use client"
 
-import { FileText, FolderOpen, Info, KeyRound, Link2, ShieldCheck } from "lucide-react"
+import { FileText, FolderOpen, Info, KeyRound, Link2, ShieldCheck, Network, Lock, Share2 } from "lucide-react"
 import type { ReactNode } from "react"
 import { useState } from "react"
 
 import { cn } from "@/lib/utils"
 
 export type ResourceDetailPanel = {
-  id: "links" | "credentials" | "files" | "overview" | "access"
+  id: "overview" | "credentials" | "files" | "links" | "access" | "environments" | "permissions" | "shares"
   label: string
   count?: number
   description?: string
   content: ReactNode
 }
 
-const icons = {
+const icons: Record<ResourceDetailPanel["id"], typeof Info> = {
   links: Link2,
   credentials: KeyRound,
   files: FolderOpen,
   overview: Info,
   access: ShieldCheck,
-} satisfies Record<ResourceDetailPanel["id"], typeof FileText>
+  environments: Network,
+  permissions: ShieldCheck,
+  shares: Share2,
+}
 
 export function ResourceDetailWorkspace({ panels }: { panels: ResourceDetailPanel[] }) {
   const [activeId, setActiveId] = useState(panels[0]?.id)

@@ -17,6 +17,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import type { ResourceLink } from "@/lib/db/schema"
 import { createCredential } from "@/lib/credential/actions"
 import { cn } from "@/lib/utils"
 import { CredentialSubjectPicker, type CredentialSubjectGrant } from "./credential-subject-picker"
@@ -36,10 +37,12 @@ const credentialTypeOptions = [
 
 export function CredentialForm({
   resourceId,
+  links,
   subjects,
   onDone,
 }: {
   resourceId: string
+  links?: ResourceLink[]
   subjects: Subject[]
   onDone?: () => void
 }) {
@@ -62,6 +65,7 @@ export function CredentialForm({
       description: String(formData.get("description") ?? "").trim(),
       accessMode,
       subjects: accessMode === "RESTRICTED" ? selectedSubjects : [],
+      linkId: formData.get("linkId") === "none" ? undefined : String(formData.get("linkId") ?? ""),
     })
 
     if (!result.success) {
@@ -119,6 +123,28 @@ export function CredentialForm({
             ))}
           </select>
         </div>
+
+        {/* Associated Link */}
+        {links && links.length > 0 && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="credential-link" className="text-xs font-semibold">
+              绑定专属环境 (可选)
+            </Label>
+            <select
+              id="credential-link"
+              name="linkId"
+              defaultValue="none"
+              className="flex h-9 w-full rounded-xl border border-input bg-card px-3 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="none">-- 模块全局通用 --</option>
+              {links.map(link => (
+                <option key={link.id} value={link.id}>
+                  {link.title} ({link.url})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Username */}
         <div className="space-y-1.5">

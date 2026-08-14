@@ -5,12 +5,12 @@ import {
   Boxes,
   FileText,
   FolderKey,
-  Globe2,
   Heart,
   LayoutDashboard,
   Settings,
   UsersRound,
   Users,
+  StickyNote,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -20,10 +20,10 @@ import { cn } from "@/lib/utils"
 
 const navigation = [
   { label: "工作台概览", href: "/", icon: LayoutDashboard },
-  { label: "共享模块", href: "/resources", icon: Boxes },
-  { label: "常用网站", href: "/websites", icon: Globe2 },
+  { label: "统一资源库", href: "/resources", icon: Boxes },
   { label: "文件资料", href: "/files", icon: FileText },
   { label: "账号密码", href: "/credentials", icon: FolderKey },
+  { label: "极简备忘", href: "/memos", icon: StickyNote },
   { label: "我的收藏", href: "/favorites", icon: Heart },
 ]
 

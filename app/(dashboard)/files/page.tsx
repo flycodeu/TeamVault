@@ -90,19 +90,11 @@ export default async function FilesPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">文件资料</h1>
-          <span className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 text-xs font-semibold">
-            {total}
-          </span>
-        </div>
-      </div>
-
-      {/* Filters & Search */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex overflow-x-auto gap-1.5 pb-1 md:pb-0 scrollbar-none">
+      {/* Compact Header & Filter Bar */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Left: Kind Pills & Total Badge */}
+        <div className="flex items-center gap-3">
+          <div className="flex overflow-x-auto gap-1.5 pb-1 md:pb-0 scrollbar-none">
           {fileKindTabs.map(tab => {
             const Icon = tab.icon
             const active = currentKind === tab.key
@@ -125,30 +117,34 @@ export default async function FilesPage({
               </Link>
             )
           })}
+          </div>
+          <span className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 text-[11px] font-semibold shrink-0 hidden sm:inline-block">
+            共 {total} 项
+          </span>
         </div>
 
-        <form className="flex gap-2 max-w-md w-full">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              name="q"
-              defaultValue={q}
-              placeholder="搜索文件名、扩展名或所属模块..."
-              className="h-9 border-border/80 bg-card pl-9 text-xs shadow-xs"
-            />
-            {currentKind !== "ALL" ? <input type="hidden" name="kind" value={currentKind} /> : null}
-          </div>
-          <Button type="submit" variant="outline" size="sm" className="h-9 text-xs font-medium">
-            搜索
-          </Button>
-          {q ? (
-            <Button variant="ghost" size="sm" className="h-9 text-xs" asChild>
-              <Link href={currentKind !== "ALL" ? `/files?kind=${currentKind}` : "/files"}>
-                <X className="size-3.5 mr-1" /> 清除
-              </Link>
-            </Button>
-          ) : null}
-        </form>
+        {/* Right: Search Input Form */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <form className="flex gap-2 flex-1 md:w-[320px]">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                name="q"
+                defaultValue={q}
+                placeholder="搜索文件名、扩展名或所属模块..."
+                className="h-9 border-border/80 bg-card pl-9 text-xs shadow-xs w-full"
+              />
+              {currentKind !== "ALL" ? <input type="hidden" name="kind" value={currentKind} /> : null}
+            </div>
+            {q ? (
+              <Button variant="ghost" size="sm" className="h-9 text-xs px-2.5" asChild>
+                <Link href={currentKind !== "ALL" ? `/files?kind=${currentKind}` : "/files"}>
+                  <X className="size-3.5" />
+                </Link>
+              </Button>
+            ) : null}
+          </form>
+        </div>
       </div>
 
       {groups.length ? (

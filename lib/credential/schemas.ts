@@ -12,6 +12,7 @@ export const credentialSchema = z.object({
   description: z.string().trim().max(1000).optional(),
   accessMode: credentialAccessModeSchema.default("RESOURCE"),
   subjects: z.array(credentialSubjectSchema).max(200).default([]),
+  linkId: z.string().optional(),
 })
 export const credentialUpdateSchema = credentialSchema.omit({ accessMode: true, subjects: true }).extend({ secret: z.string().max(10000).optional() })
 export type CredentialInput = z.infer<typeof credentialSchema>

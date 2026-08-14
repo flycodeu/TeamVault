@@ -14,14 +14,13 @@ import {
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 
-import { CredentialSection } from "@/components/credential/credential-section"
+import { EnvironmentCredentialSection } from "@/components/resource/environment-credential-section"
 import { FileList } from "@/components/file/file-list"
 import { FileUploader } from "@/components/file/file-uploader"
 import { PermissionEditor } from "@/components/permission/permission-editor"
 import { ResourceDeleteButton } from "@/components/resource/resource-delete-button"
 import { ResourceDetailWorkspace, type ResourceDetailPanel } from "@/components/resource/resource-detail-workspace"
 import { ResourceFavoriteButton } from "@/components/resource/resource-favorite-button"
-import { ResourceLinkManager } from "@/components/resource/resource-link-manager"
 import { ShareForm } from "@/components/share/share-form"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
@@ -180,35 +179,26 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
     },
   ]
 
-  if (mayEdit || visibleCredentials.length) {
+  if (mayEdit || visibleCredentials.length || moduleLinks.length) {
     panels.push({
-      id: "credentials",
-      label: isWebsite ? "携带账号与密码" : "账号凭据",
-      count: visibleCredentials.length,
-      description: isWebsite ? "该网站可携带的登录账号、密码或 API Key，并可精细指定成员可见范围。" : "按成员或小组控制账号与密钥的可见范围。",
+      id: "environments",
+      label: isWebsite ? "环境拓扑与关联账号" : "环境与凭据",
+      count: moduleLinks.length + visibleCredentials.length,
+      description: "配置关联的环境/链接地址，并给每个环境绑定专属账号或密钥。",
       content: (
-        <CredentialSection
+        <EnvironmentCredentialSection
           resourceId={id}
+          links={moduleLinks}
           credentials={visibleCredentials}
           subjects={subjects}
           accessGrants={credentialGrants.map(grant => ({
             credentialId: grant.credentialId,
-            subjectType: grant.subjectType,
+            subjectType: grant.subjectType as "USER" | "GROUP",
             subjectId: grant.subjectId,
           }))}
           mayEdit={mayEdit}
         />
       ),
-    })
-  }
-
-  if (mayEdit || moduleLinks.length) {
-    panels.push({
-      id: "links",
-      label: isWebsite ? "关联子链/分站" : "关联链接",
-      count: moduleLinks.length,
-      description: "网站、外部文档与相关入口。",
-      content: <ResourceLinkManager resourceId={id} links={moduleLinks} mayEdit={mayEdit} />,
     })
   }
 
@@ -232,51 +222,70 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
 
   const activeShares = mayShare ? await getResourceActiveShares(id) : []
 
-  if (mayEdit || mayShare) {
+  if (mayEdit) {
     panels.push({
-      id: "access",
-      label: "授权与分享",
+      id: "permissions",
+      label: "成员授权",
       content: (
         <section className="rounded-xl border border-border/80 bg-card p-5 shadow-xs md:p-6">
-          <div className="grid items-start gap-6 xl:grid-cols-2">
-            {mayShare ? (
-              <div className="rounded-xl border border-border/80 bg-background/60 p-5 space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  外部协作交付包与分享
-                </h3>
-                <ShareForm
-                  resourceId={id}
-                  resourceName={resource.name}
-                  files={resourceFiles.map(file => ({ id: file.id, name: file.originalName }))}
-                  credentials={allCredentials.map(cred => ({
-                    id: cred.id,
-                    name: cred.name,
-                    type: cred.type,
-                    username: cred.username,
-                  }))}
-                  activeShares={activeShares}
-                />
-              </div>
-            ) : null}
-            {mayEdit ? (
-              <div className={cn("rounded-xl border border-border/80 bg-background/60 p-5 space-y-3", mayShare ? "xl:col-span-2" : "")}>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">成员与小组权限矩阵</h3>
-                <PermissionEditor
-                  resourceId={id}
-                  subjects={subjects}
-                  initial={grants.map(grant => ({
-                    subjectType: grant.subjectType,
-                    subjectId: grant.subjectId,
-                    canView: grant.canView,
-                    canViewSecret: grant.canViewSecret,
-                    canViewFile: grant.canViewFile,
-                    canDownload: grant.canDownload,
-                    canEdit: grant.canEdit,
-                    canShare: grant.canShare,
-                  }))}
-                />
-              </div>
-            ) : null}
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold tracking-wider text-foreground flex items-center gap-2">
+              <UserRound className="size-4 text-primary" />
+              成员与小组权限矩阵
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              为团队内的成员或群组精细划分操作权限。拥有「修改编辑」等高级权限的人员将自动获得查阅权限。
+            </p>
+            <div className="rounded-xl border border-border/80 bg-background/60 p-1">
+              <PermissionEditor
+                resourceId={id}
+                subjects={subjects}
+                initial={grants.map(grant => ({
+                  subjectType: grant.subjectType,
+                  subjectId: grant.subjectId,
+                  canView: grant.canView,
+                  canViewSecret: grant.canViewSecret,
+                  canViewFile: grant.canViewFile,
+                  canDownload: grant.canDownload,
+                  canEdit: grant.canEdit,
+                  canShare: grant.canShare,
+                }))}
+              />
+            </div>
+          </div>
+        </section>
+      ),
+    })
+  }
+
+  if (mayShare) {
+    panels.push({
+      id: "shares",
+      label: "对外分享",
+      content: (
+        <section className="rounded-xl border border-border/80 bg-card p-5 shadow-xs md:p-6">
+          <div className="max-w-3xl space-y-4">
+            <h3 className="text-sm font-bold tracking-wider text-foreground flex items-center gap-2">
+              <ExternalLink className="size-4 text-primary" />
+              外部协作交付包与分享
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              生成包含加密访问码的临时链接，将该资源打包分享给外部承包商或临时协作者，不影响内部组织架构。
+            </p>
+            <div className="rounded-xl border border-border/80 bg-background/60 p-5 space-y-3">
+              <ShareForm
+                resourceId={id}
+                resourceName={resource.name}
+                files={resourceFiles.map(file => ({ id: file.id, name: file.originalName }))}
+                credentials={allCredentials.map(cred => ({
+                  id: cred.id,
+                  name: cred.name,
+                  type: cred.type,
+                  username: cred.username,
+                }))}
+                activeShares={activeShares}
+              />
+            </div>
           </div>
         </section>
       ),

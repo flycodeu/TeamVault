@@ -98,7 +98,7 @@ export function WebsiteCard({
   }
 
   return (
-    <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-4.5 md:p-5 shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md hover:shadow-primary/5">
+    <article className="h-full group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-4.5 md:p-5 shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md hover:shadow-primary/5">
       {/* Top Bar Actions: Favorite, Edit, Delete */}
       <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
         <ResourceFavoriteButton
@@ -123,7 +123,7 @@ export function WebsiteCard({
             resourceId={website.id}
             resourceName={website.name}
             compact
-            redirectTo="/websites"
+            redirectTo="/resources?kind=WEBSITE"
             noun="网站"
           />
         ) : null}
@@ -160,7 +160,7 @@ export function WebsiteCard({
         {/* Website Direct URL */}
         {website.url ? (
           <div className="mt-2.5 flex items-center justify-between rounded-xl border border-border/70 bg-accent/20 px-3 py-1.5 text-xs transition hover:border-primary/40 hover:bg-accent/30">
-            <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[210px]">
+            <span className="font-mono text-[11px] text-muted-foreground truncate flex-1 min-w-0 pr-2" title={website.url}>
               {website.url}
             </span>
             <a

@@ -1,17 +1,20 @@
-import { and, count, desc, eq, inArray, isNull, like, ne, or } from "drizzle-orm"
+import { and, count, desc, eq, inArray, isNull, like, or } from "drizzle-orm"
 import {
   BookOpen,
   Boxes,
   FolderKanban,
+  Globe2,
   Plus,
   Search,
   UserRound,
   Wrench,
   X,
+  type LucideIcon,
 } from "lucide-react"
 import Link from "next/link"
 
 import { ResourceCard } from "@/components/resource/resource-card"
+import { WebsiteCard } from "@/components/website/website-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Pagination } from "@/components/ui/pagination"
@@ -23,8 +26,9 @@ import { cn } from "@/lib/utils"
 
 const pageSize = 12
 
-const kindTabs: Array<{ key: string; label: string; icon: typeof Boxes }> = [
-  { key: "ALL", label: "全部模块", icon: Boxes },
+const kindTabs: Array<{ key: string; label: string; icon: LucideIcon }> = [
+  { key: "ALL", label: "全部资产", icon: Boxes },
+  { key: "WEBSITE", label: "网站系统", icon: Globe2 },
   { key: "PROJECT", label: "项目", icon: FolderKanban },
   { key: "TOOL", label: "工具 / 系统", icon: Wrench },
   { key: "KNOWLEDGE", label: "知识 / 文档", icon: BookOpen },
@@ -64,7 +68,7 @@ export default async function ResourcesPage({
   const kindFilter =
     currentKind !== "ALL"
       ? eq(resources.moduleKind, currentKind as Resource["moduleKind"])
-      : ne(resources.moduleKind, "WEBSITE")
+      : undefined
 
   const where = permittedIds.length
     ? and(
@@ -133,92 +137,108 @@ export default async function ResourcesPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">共享模块</h1>
-          <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-foreground">
-            {total}
+      {/* Compact Header & Filter Bar */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Left: Kind Pills & Total Badge */}
+        <div className="flex items-center gap-3">
+          <div className="flex overflow-x-auto gap-1.5 pb-1 md:pb-0 scrollbar-none">
+            {kindTabs.map(tab => {
+              const Icon = tab.icon
+              const active = currentKind === tab.key
+              return (
+                <Link
+                  key={tab.key}
+                  href={`/resources?${new URLSearchParams({
+                    ...(tab.key !== "ALL" ? { kind: tab.key } : {}),
+                    ...(q ? { q } : {}),
+                  }).toString()}`}
+                  className={cn(
+                    "inline-flex h-8.5 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-xs font-medium transition duration-150 border",
+                    active
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                      : "bg-card text-muted-foreground border-border/80 hover:bg-accent/40 hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-3.5" />
+                  <span>{tab.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+          <span className="rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-semibold text-accent-foreground shrink-0 hidden sm:inline-block">
+            共 {total} 项
           </span>
         </div>
-        <Button asChild className="h-9 gap-1.5 font-medium shadow-xs shrink-0">
-          <Link href="/resources/new">
-            <Plus className="size-4" />
-            <span>新建模块</span>
-          </Link>
-        </Button>
-      </div>
 
-      {/* Filter Tabs & Search Bar */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        {/* Kind Pills */}
-        <div className="flex overflow-x-auto gap-1.5 pb-1 md:pb-0 scrollbar-none">
-          {kindTabs.map(tab => {
-            const Icon = tab.icon
-            const active = currentKind === tab.key
-            return (
-              <Link
-                key={tab.key}
-                href={`/resources?${new URLSearchParams({
-                  ...(tab.key !== "ALL" ? { kind: tab.key } : {}),
-                  ...(q ? { q } : {}),
-                }).toString()}`}
-                className={cn(
-                  "inline-flex h-8.5 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-xs font-medium transition duration-150 border",
-                  active
-                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                    : "bg-card text-muted-foreground border-border/80 hover:bg-accent/40 hover:text-foreground",
-                )}
-              >
-                <Icon className="size-3.5" />
-                <span>{tab.label}</span>
-              </Link>
-            )
-          })}
-        </div>
+        {/* Right: Search Input Form & New Button */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <form className="flex gap-2 flex-1 md:w-[320px]">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                name="q"
+                defaultValue={q}
+                placeholder="搜索模块名称、分类或标签..."
+                className="h-9 border-border/80 bg-card pl-9 text-xs shadow-xs w-full"
+              />
+              {currentKind !== "ALL" ? <input type="hidden" name="kind" value={currentKind} /> : null}
+            </div>
+            {q ? (
+              <Button variant="ghost" size="sm" className="h-9 text-xs px-2.5" asChild>
+                <Link href={currentKind !== "ALL" ? `/resources?kind=${currentKind}` : "/resources"}>
+                  <X className="size-3.5" />
+                </Link>
+              </Button>
+            ) : null}
+          </form>
 
-        {/* Search Input Form */}
-        <form className="flex gap-2 max-w-md w-full">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              name="q"
-              defaultValue={q}
-              placeholder="搜索模块名称、分类或标签..."
-              className="h-9 border-border/80 bg-card pl-9 text-xs shadow-xs"
-            />
-            {currentKind !== "ALL" ? <input type="hidden" name="kind" value={currentKind} /> : null}
-          </div>
-          <Button type="submit" variant="outline" size="sm" className="h-9 text-xs font-medium">
-            搜索
+          <div className="h-4 w-[1px] bg-border mx-1 hidden sm:block"></div>
+
+          <Button asChild className="h-9 gap-1.5 font-medium shadow-xs shrink-0">
+            <Link href={currentKind === "WEBSITE" ? "/websites/new" : "/resources/new"}>
+              <Plus className="size-4" />
+              <span className="hidden sm:inline-block">{currentKind === "WEBSITE" ? "新建网站" : "新建资源"}</span>
+            </Link>
           </Button>
-          {q ? (
-            <Button variant="ghost" size="sm" className="h-9 text-xs" asChild>
-              <Link href={currentKind !== "ALL" ? `/resources?kind=${currentKind}` : "/resources"}>
-                <X className="size-3.5 mr-1" /> 清除
-              </Link>
-            </Button>
-          ) : null}
-        </form>
+        </div>
       </div>
 
       {/* Grid or Empty State */}
       {rows.length ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {rows.map(resource => (
-              <ResourceCard
-                key={resource.id}
-                resource={resource}
-                mayDelete={Boolean(currentUser?.isAdmin || currentUser?.id === resource.ownerId)}
-                isFavorite={favoriteIds.has(resource.id)}
-                counts={{
-                  links: linkCounts.get(resource.id) ?? 0,
-                  credentials: credentialCounts.get(resource.id) ?? 0,
-                  files: fileCounts.get(resource.id) ?? 0,
-                }}
-              />
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5 md:gap-6">
+            {rows.map(resource => {
+              const mayDelete = Boolean(currentUser?.isAdmin || currentUser?.id === resource.ownerId)
+              const isFavorite = favoriteIds.has(resource.id)
+
+              if (resource.moduleKind === "WEBSITE") {
+                const websCeds = visibleCredentials.filter(c => c.resourceId === resource.id)
+                return (
+                  <div key={resource.id}>
+                    <WebsiteCard
+                      website={{ ...resource, credentials: websCeds }}
+                      mayDelete={mayDelete}
+                      isFavorite={isFavorite}
+                    />
+                  </div>
+                )
+              }
+
+              return (
+                <div key={resource.id}>
+                  <ResourceCard
+                    resource={resource}
+                    mayDelete={mayDelete}
+                    isFavorite={isFavorite}
+                    counts={{
+                      links: linkCounts.get(resource.id) ?? 0,
+                      credentials: credentialCounts.get(resource.id) ?? 0,
+                      files: fileCounts.get(resource.id) ?? 0,
+                    }}
+                  />
+                </div>
+              )
+            })}
           </div>
           <Pagination
             pathname="/resources"
@@ -237,8 +257,8 @@ export default async function ResourcesPage({
           </p>
           {!q ? (
             <Button asChild className="mt-5 h-8.5 text-xs font-medium" size="sm">
-              <Link href="/resources/new">
-                <Plus className="size-3.5 mr-1" /> 新建模块
+              <Link href={currentKind === "WEBSITE" ? "/websites/new" : "/resources/new"}>
+                <Plus className="size-3.5 mr-1" /> {currentKind === "WEBSITE" ? "新建网站" : "新建资源"}
               </Link>
             </Button>
           ) : null}

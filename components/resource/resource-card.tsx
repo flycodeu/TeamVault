@@ -95,7 +95,7 @@ export function ResourceCard({
   }
 
   return (
-    <article className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/80 bg-card p-5 shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5">
+    <article className="h-full group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-4.5 md:p-5 shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md hover:shadow-primary/5">
       {/* Top right quick actions */}
       <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
         <ResourceFavoriteButton resourceId={resource.id} resourceName={resource.name} initialFavorite={isFavorite} compact />
@@ -104,7 +104,7 @@ export function ResourceCard({
             resourceId={resource.id}
             resourceName={resource.name}
             compact
-            redirectTo={isWebsite ? "/websites" : "/resources"}
+            redirectTo={isWebsite ? "/resources?kind=WEBSITE" : "/resources"}
             noun={isWebsite ? "网站" : "模块"}
           />
         ) : null}

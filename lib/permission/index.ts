@@ -140,7 +140,68 @@ export async function listPermittedCredentialIds() {
 }
 
 export async function listPermittedResourceIds(permission: ResourcePermission) {
-  const rows = await db.select({ id: resources.id }).from(resources).where(eq(resources.status, "ACTIVE"))
-  const checks = await Promise.all(rows.map(async row => ({ id: row.id, allowed: await canResource(row.id, permission) })))
-  return checks.filter(result => result.allowed).map(result => result.id)
+  const user = await getCurrentUser()
+  if (!user) return []
+
+  const activeResources = await db.select({
+    id: resources.id,
+    ownerId: resources.ownerId,
+    moduleKind: resources.moduleKind,
+    type: resources.type,
+    visibility: resources.visibility,
+  }).from(resources).where(eq(resources.status, "ACTIVE"))
+
+  if (user.isAdmin) {
+    return activeResources.map(r => r.id)
+  }
+
+  const memberships = await db.select({ groupId: groupMembers.groupId }).from(groupMembers).where(eq(groupMembers.userId, user.id))
+  const groupIds = memberships.map(m => m.groupId)
+
+  const subjectGrant = groupIds.length
+    ? or(
+        and(eq(resourcePermissions.subjectType, "USER"), eq(resourcePermissions.subjectId, user.id)),
+        and(eq(resourcePermissions.subjectType, "GROUP"), inArray(resourcePermissions.subjectId, groupIds))
+      )
+    : and(eq(resourcePermissions.subjectType, "USER"), eq(resourcePermissions.subjectId, user.id))
+
+  const grants = await db.select().from(resourcePermissions).where(subjectGrant)
+  const grantMap = new Map<string, typeof grants>()
+  for (const grant of grants) {
+    if (!grantMap.has(grant.resourceId)) {
+      grantMap.set(grant.resourceId, [])
+    }
+    grantMap.get(grant.resourceId)!.push(grant)
+  }
+
+  const allowedResourceIds = new Set<string>()
+
+  for (const resource of activeResources) {
+    if (resource.ownerId === user.id) {
+      allowedResourceIds.add(resource.id)
+      continue
+    }
+
+    const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
+
+    if (resource.visibility === "TEAM" || resource.visibility === "PUBLIC") {
+      if (permission === "VIEW" || (isWebsite && permission === "EDIT")) {
+        allowedResourceIds.add(resource.id)
+        continue
+      }
+    }
+
+    if (resource.visibility === "GROUP" && isWebsite && (permission === "VIEW" || permission === "EDIT") && groupIds.length > 0) {
+      allowedResourceIds.add(resource.id)
+      continue
+    }
+
+    const resourceGrants = grantMap.get(resource.id) || []
+    const hasGrant = resourceGrants.some(g => permissionFlag(g, permission))
+    if (hasGrant) {
+      allowedResourceIds.add(resource.id)
+    }
+  }
+
+  return Array.from(allowedResourceIds)
 }

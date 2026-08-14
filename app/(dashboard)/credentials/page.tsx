@@ -69,36 +69,31 @@ export default async function CredentialsPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8 space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">账号与密钥</h1>
-          <span className="rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 px-2.5 py-0.5 text-xs font-semibold">
-            {total}
-          </span>
-        </div>
-      </div>
+      {/* Compact Header & Filter Bar */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <span className="rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 px-2.5 py-0.5 text-[11px] font-semibold shrink-0">
+          共 {total} 项
+        </span>
 
-      <form className="flex gap-2 max-w-lg">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            name="q"
-            defaultValue={q}
-            placeholder="搜索凭据名称、账号用户名、所属模块或说明..."
-            className="h-9 border-border/80 bg-card pl-9 text-xs shadow-xs"
-          />
-        </div>
-        <Button type="submit" variant="outline" size="sm" className="h-9 text-xs font-medium">
-          搜索
-        </Button>
-        {q ? (
-          <Button variant="ghost" size="sm" className="h-9 text-xs" asChild>
-            <Link href="/credentials">
-              <X className="size-3.5 mr-1" /> 清除
-            </Link>
-          </Button>
-        ) : null}
-      </form>
+        <form className="flex gap-2 max-w-lg w-full md:w-[320px]">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              name="q"
+              defaultValue={q}
+              placeholder="搜索凭据名称、账号用户名、所属模块或说明..."
+              className="h-9 border-border/80 bg-card pl-9 text-xs shadow-xs w-full"
+            />
+          </div>
+          {q ? (
+            <Button variant="ghost" size="sm" className="h-9 text-xs px-2.5" asChild>
+              <Link href="/credentials">
+                <X className="size-3.5" />
+              </Link>
+            </Button>
+          ) : null}
+        </form>
+      </div>
 
       {pageRows.length ? (
         <>

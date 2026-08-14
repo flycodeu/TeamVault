@@ -1,8 +1,7 @@
-import { and, count, desc, eq, inArray, isNull, ne } from "drizzle-orm"
+import { and, count, desc, eq, inArray, isNull } from "drizzle-orm"
 import {
   ArrowRight,
   Boxes,
-  ExternalLink,
   FileText,
   FolderKey,
   Globe2,
@@ -13,6 +12,7 @@ import {
 import Link from "next/link"
 
 import { ResourceCard } from "@/components/resource/resource-card"
+import { WebsiteCard } from "@/components/website/website-card"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
 import { db } from "@/lib/db"
@@ -34,13 +34,12 @@ export default async function DashboardPage() {
     [fileCount],
     favoriteRows,
     recentResources,
-    recentWebsites,
   ] = await Promise.all([
     viewIds.length
       ? db
           .select({ value: count() })
           .from(resources)
-          .where(and(inArray(resources.id, viewIds), ne(resources.moduleKind, "WEBSITE"), isNull(resources.deletedAt)))
+          .where(and(inArray(resources.id, viewIds), isNull(resources.deletedAt)))
       : Promise.resolve([{ value: 0 }]),
     viewIds.length
       ? db
@@ -59,16 +58,9 @@ export default async function DashboardPage() {
       : [],
     viewIds.length
       ? db.query.resources.findMany({
-          where: and(inArray(resources.id, viewIds), ne(resources.moduleKind, "WEBSITE"), isNull(resources.deletedAt)),
+          where: and(inArray(resources.id, viewIds), isNull(resources.deletedAt)),
           orderBy: [desc(resources.updatedAt)],
-          limit: 6,
-        })
-      : [],
-    viewIds.length
-      ? db.query.resources.findMany({
-          where: and(inArray(resources.id, viewIds), eq(resources.moduleKind, "WEBSITE"), isNull(resources.deletedAt)),
-          orderBy: [desc(resources.updatedAt)],
-          limit: 5,
+          limit: 12,
         })
       : [],
   ])
@@ -103,7 +95,7 @@ export default async function DashboardPage() {
 
   const metrics = [
     {
-      label: "共享模块",
+      label: "全部资产",
       value: resourceCount.value,
       href: "/resources",
       icon: Boxes,
@@ -111,9 +103,9 @@ export default async function DashboardPage() {
       bg: "bg-blue-500/10 border-blue-200/50 dark:border-blue-900/30",
     },
     {
-      label: "常用网站",
+      label: "网站系统",
       value: websiteCount.value,
-      href: "/websites",
+      href: "/resources?kind=WEBSITE",
       icon: Globe2,
       color: "text-teal-600 dark:text-teal-400",
       bg: "bg-teal-500/10 border-teal-200/50 dark:border-teal-900/30",
@@ -208,101 +200,62 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Main Content Two-Column Grid */}
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-        {/* Left Column: Recent Modules */}
+      <div className="flex flex-col gap-8">
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold tracking-tight text-foreground">最近更新模块</h2>
+            <h2 className="text-lg font-bold tracking-tight text-foreground">最近更新资产</h2>
             <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted-foreground" asChild>
               <Link href="/resources">
-                <span>全部模块</span>
+                <span>全部资源</span>
                 <ArrowRight className="size-3.5" />
               </Link>
             </Button>
           </div>
 
           {recentResources.length ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {recentResources.map(resource => (
-                <ResourceCard
-                  key={resource.id}
-                  resource={resource}
-                  isFavorite={favoriteIds.has(resource.id)}
-                  mayDelete={Boolean(user?.isAdmin || user?.id === resource.ownerId)}
-                  counts={{
-                    links: linkCounts.get(resource.id) ?? 0,
-                    credentials: credCounts.get(resource.id) ?? 0,
-                    files: fCounts.get(resource.id) ?? 0,
-                  }}
-                />
-              ))}
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {recentResources.map(resource => {
+                const isFavorite = favoriteIds.has(resource.id)
+                const mayDelete = Boolean(user?.isAdmin || user?.id === resource.ownerId)
+
+                if (resource.moduleKind === "WEBSITE") {
+                  const websCeds = visibleCredentials.filter(c => c.resourceId === resource.id)
+                  return (
+                    <WebsiteCard
+                      key={resource.id}
+                      website={{ ...resource, credentials: websCeds }}
+                      mayDelete={mayDelete}
+                      isFavorite={isFavorite}
+                    />
+                  )
+                }
+
+                return (
+                  <ResourceCard
+                    key={resource.id}
+                    resource={resource}
+                    isFavorite={isFavorite}
+                    mayDelete={mayDelete}
+                    counts={{
+                      links: linkCounts.get(resource.id) ?? 0,
+                      credentials: credCounts.get(resource.id) ?? 0,
+                      files: fCounts.get(resource.id) ?? 0,
+                    }}
+                  />
+                )
+              })}
             </div>
           ) : (
             <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed bg-card p-6 text-center">
               <Boxes className="size-8 text-muted-foreground/60" />
-              <p className="mt-2 text-sm font-semibold text-foreground">还没有共享模块</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">还没有资产记录</p>
               <Button asChild className="mt-4 h-8 text-xs font-medium" size="sm">
-                <Link href="/resources/new">新建模块</Link>
+                <Link href="/resources/new">新建资源</Link>
               </Button>
             </div>
           )}
         </section>
 
-        {/* Right Column: Quick Websites & Security Tips */}
-        <aside className="space-y-6">
-          {/* Quick Websites Widget */}
-          <div className="rounded-xl border border-border/80 bg-card p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center gap-2">
-                <Globe2 className="size-4.5 text-teal-600 dark:text-teal-400" />
-                <h2 className="text-sm font-bold text-foreground">团队常用网站</h2>
-              </div>
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" asChild>
-                <Link href="/websites">管理</Link>
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              {recentWebsites.length ? (
-                recentWebsites.map(site => (
-                  <div
-                    key={site.id}
-                    className="group flex items-center justify-between rounded-lg border border-border/60 bg-background/50 p-2.5 transition hover:border-primary/40 hover:bg-accent/20"
-                  >
-                    <Link href={`/resources/${site.id}`} className="min-w-0 flex-1 pr-2">
-                      <p className="truncate text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {site.name}
-                      </p>
-                      {site.url && (
-                        <p className="truncate text-[11px] font-mono text-muted-foreground/70">{site.url}</p>
-                      )}
-                    </Link>
-                    {site.url ? (
-                      <a
-                        href={site.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="grid size-7 shrink-0 place-items-center rounded-md border border-border bg-background text-muted-foreground hover:border-primary hover:text-primary transition"
-                        title="打开网站"
-                      >
-                        <ExternalLink className="size-3.5" />
-                      </a>
-                    ) : null}
-                  </div>
-                ))
-              ) : (
-                <div className="py-6 text-center text-xs text-muted-foreground">
-                  <p>暂未添加常用网站</p>
-                  <Button variant="outline" size="sm" className="mt-2.5 h-7 text-xs" asChild>
-                    <Link href="/websites/new">添加网站</Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-        </aside>
       </div>
     </div>
   )
