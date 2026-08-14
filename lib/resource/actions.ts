@@ -25,6 +25,8 @@ export async function createResource(input: ResourceInput): Promise<ActionResult
   const [resource] = await db.insert(resources).values({
     name: parsed.data.name,
     moduleKind: parsed.data.moduleKind,
+    type: parsed.data.moduleKind === "WEBSITE" ? "WEBSITE" : "OTHER",
+    url: parsed.data.moduleKind === "WEBSITE" ? parsed.data.url : null,
     description: parsed.data.description,
     visibility: parsed.data.visibility,
     sensitivity: parsed.data.sensitivity,
@@ -46,7 +48,7 @@ export async function updateResource(id: string, input: ResourceInput): Promise<
   const resource = await db.query.resources.findFirst({ where: and(eq(resources.id, id), isNull(resources.deletedAt)) })
   if (!resource) return { success: false, error: "资源不存在" }
   if (!user.isAdmin && resource.ownerId !== user.id) return { success: false, error: "无权编辑该资源" }
-  await db.update(resources).set({ name: parsed.data.name, moduleKind: parsed.data.moduleKind, description: parsed.data.description, visibility: parsed.data.visibility, sensitivity: parsed.data.sensitivity, tags: JSON.stringify(parsed.data.tags), updatedAt: new Date() }).where(eq(resources.id, id))
+  await db.update(resources).set({ name: parsed.data.name, moduleKind: parsed.data.moduleKind, type: parsed.data.moduleKind === "WEBSITE" ? "WEBSITE" : "OTHER", url: parsed.data.moduleKind === "WEBSITE" ? parsed.data.url : null, description: parsed.data.description, visibility: parsed.data.visibility, sensitivity: parsed.data.sensitivity, tags: JSON.stringify(parsed.data.tags), updatedAt: new Date() }).where(eq(resources.id, id))
   revalidatePath("/")
   revalidatePath("/resources")
   revalidatePath(`/resources/${id}`)

@@ -13,5 +13,5 @@ export default async function EditResourcePage({ params }: { params: Promise<{ i
   const { id } = await params
   const resource = await db.query.resources.findFirst({ where: and(eq(resources.id, id), isNull(resources.deletedAt)) })
   if (!resource || !(await canEditResource(id))) notFound()
-  return <div className="mx-auto max-w-3xl px-4 py-7 md:px-8 md:py-9"><Button variant="ghost" size="sm" asChild><Link href={`/resources/${id}`}><ChevronLeft />模块详情</Link></Button><div className="mt-6"><h1 className="text-2xl font-semibold">编辑模块</h1></div><div className="mt-7 rounded-lg border bg-card p-5 md:p-7"><ResourceForm resource={resource} /></div></div>
+  return <div className="mx-auto max-w-3xl px-4 py-7 md:px-8 md:py-9"><Button variant="ghost" size="sm" asChild><Link href={`/resources/${id}`}><ChevronLeft />返回详情</Link></Button><div className="mt-6"><h1 className="text-2xl font-semibold">编辑{resource.moduleKind === "WEBSITE" ? "网站" : "模块"}</h1></div><div className="mt-6 rounded-xl border bg-card p-5 md:p-7"><ResourceForm resource={resource} /></div></div>
 }

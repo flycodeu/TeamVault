@@ -67,7 +67,7 @@ export const resources = sqliteTable(
       .primaryKey()
       .$defaultFn(() => randomUUID()),
     name: text("name").notNull(),
-    moduleKind: text("module_kind", { enum: ["PROJECT", "TOOL", "KNOWLEDGE", "PERSONAL", "OTHER"] }).notNull().default("OTHER"),
+    moduleKind: text("module_kind", { enum: ["PROJECT", "TOOL", "KNOWLEDGE", "WEBSITE", "PERSONAL", "OTHER"] }).notNull().default("OTHER"),
     type: text("type", {
       enum: ["WEBSITE", "SERVER", "DATABASE", "DEVICE", "DOCUMENT", "SOFTWARE", "API", "OTHER"],
     }).notNull().default("OTHER"),
