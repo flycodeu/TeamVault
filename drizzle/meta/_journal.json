@@ -64,6 +64,13 @@
       "when": 1786606871549,
       "tag": "0008_whole_kabuki",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1786670605649,
+      "tag": "0009_lively_dark_beast",
+      "breakpoints": true
     }
   ]
 }

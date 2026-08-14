@@ -91,6 +91,19 @@ export const resources = sqliteTable(
   (table) => [index("resource_owner_idx").on(table.ownerId), index("resource_status_idx").on(table.status)],
 )
 
+export const resourceFavorites = sqliteTable(
+  "resource_favorite",
+  {
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    resourceId: text("resource_id").notNull().references(() => resources.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("resource_favorite_user_resource_idx").on(table.userId, table.resourceId),
+    index("resource_favorite_user_idx").on(table.userId),
+  ],
+)
+
 export const resourceLinks = sqliteTable(
   "resource_link",
   {

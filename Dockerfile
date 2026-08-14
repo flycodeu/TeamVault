@@ -33,7 +33,7 @@ COPY --from=builder --chown=teamvault:teamvault /app/tsconfig.json ./tsconfig.js
 COPY --from=builder --chown=teamvault:teamvault /app/package.json ./package.json
 
 USER teamvault
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE 3030
+ENV PORT=3030
 ENV HOSTNAME=0.0.0.0
 CMD ["node", "server.js"]

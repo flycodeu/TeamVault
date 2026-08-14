@@ -4,7 +4,7 @@ services:
     container_name: teamvault
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3030:3030"
     environment:
       TEAMVAULT_APP_ROOT: /app
       TEAMVAULT_DATABASE_PATH: /app/data/teamvault.db

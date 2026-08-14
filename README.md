@@ -14,7 +14,7 @@ npm run db:bootstrap
 npm run dev
 ```
 
-打开 `http://localhost:3000`。管理员初始化命令只允许在用户表为空时执行。
+打开 `http://localhost:3030`。管理员初始化命令只允许在用户表为空时执行。
 
 ## 环境变量
 

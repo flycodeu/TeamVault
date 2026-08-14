@@ -6,8 +6,9 @@ import { revalidatePath } from "next/cache"
 import type { ActionResult } from "@/lib/action-result"
 import { getCurrentUser } from "@/lib/auth/session"
 import { db } from "@/lib/db"
-import { files, resources, shares } from "@/lib/db/schema"
+import { files, resourceFavorites, resources, shares } from "@/lib/db/schema"
 import { writeAudit } from "@/lib/audit/log"
+import { canViewResource } from "@/lib/permission"
 
 import { resourceSchema, type ResourceInput } from "./schemas"
 
@@ -56,16 +57,20 @@ export async function updateResource(id: string, input: ResourceInput): Promise<
   return { success: true, data: undefined }
 }
 
-export async function toggleFavorite(id: string): Promise<ActionResult> {
+export async function toggleFavorite(id: string): Promise<ActionResult<{ favorited: boolean }>> {
   const user = await getCurrentUser()
   if (!user) return { success: false, error: "请先登录" }
   const resource = await db.query.resources.findFirst({ where: and(eq(resources.id, id), isNull(resources.deletedAt)) })
   if (!resource) return { success: false, error: "资源不存在" }
-  await db.update(resources).set({ isFavorite: !resource.isFavorite, updatedAt: new Date() }).where(eq(resources.id, id))
+  if (!(await canViewResource(id))) return { success: false, error: "无权访问该资源" }
+  const favorite = await db.query.resourceFavorites.findFirst({ where: and(eq(resourceFavorites.userId, user.id), eq(resourceFavorites.resourceId, id)) })
+  if (favorite) await db.delete(resourceFavorites).where(and(eq(resourceFavorites.userId, user.id), eq(resourceFavorites.resourceId, id)))
+  else await db.insert(resourceFavorites).values({ userId: user.id, resourceId: id })
   revalidatePath("/")
   revalidatePath("/resources")
-  await writeAudit({ userId: user.id, action: "RESOURCE_EDIT", resourceId: id, targetType: "RESOURCE", targetId: id })
-  return { success: true, data: undefined }
+  revalidatePath("/favorites")
+  revalidatePath(`/resources/${id}`)
+  return { success: true, data: { favorited: !favorite } }
 }
 
 export async function deleteResource(id: string): Promise<ActionResult> {

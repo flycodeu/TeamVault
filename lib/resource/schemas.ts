@@ -15,7 +15,7 @@ export const resourceSchema = z.object({
 }).superRefine((value, context) => {
   if (value.moduleKind !== "WEBSITE") return
   if (!value.url) context.addIssue({ code: "custom", path: ["url"], message: "请输入网站地址" })
-  else { try { new URL(value.url) } catch { context.addIssue({ code: "custom", path: ["url"], message: "请输入有效的网站地址" }) } }
+  else { try { const url = new URL(value.url); if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Unsupported protocol") } catch { context.addIssue({ code: "custom", path: ["url"], message: "请输入有效的 HTTP 或 HTTPS 网站地址" }) } }
 })
 
 export type ResourceInput = z.infer<typeof resourceSchema>
