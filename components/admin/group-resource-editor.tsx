@@ -11,7 +11,7 @@ type ResourceOption = { id: string; name: string; type: string }
 type Grant = { resourceId: string; canViewSecret: boolean; canViewFile: boolean; canDownload: boolean; canEdit: boolean; canShare: boolean }
 type AccessLevel = "VIEW" | "FILES" | "SECRETS" | "MANAGE"
 
-const levels: Array<[AccessLevel, string]> = [["VIEW", "仅查看"], ["FILES", "查看文件"], ["SECRETS", "文件与凭据"], ["MANAGE", "管理模块"]]
+const levels: Array<[AccessLevel, string]> = [["VIEW", "仅查看"], ["FILES", "查看文件"], ["SECRETS", "文件与凭据"], ["MANAGE", "管理内容"]]
 const typeLabels: Record<string, string> = { PROJECT: "项目", TOOL: "工具 / 系统", KNOWLEDGE: "知识 / 文档", WEBSITE: "独立网站", PERSONAL: "个人", OTHER: "其他" }
 
 function levelOf(grant: Grant): AccessLevel {

@@ -3,46 +3,48 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f7f8f6;
-  --foreground: #171b19;
+  --background: #f8faf9;
+  --foreground: #111816;
   --card: #ffffff;
-  --card-foreground: #171b19;
+  --card-foreground: #111816;
   --popover: #ffffff;
-  --popover-foreground: #171b19;
-  --primary: #126455;
+  --popover-foreground: #111816;
+  --primary: #0e6553;
   --primary-foreground: #ffffff;
-  --secondary: #eef1ee;
-  --secondary-foreground: #252b28;
-  --muted: #eef1ee;
-  --muted-foreground: #65706a;
-  --accent: #e4f0ec;
-  --accent-foreground: #174e43;
-  --destructive: #b42318;
-  --border: #dfe4e0;
-  --input: #cfd6d1;
-  --ring: #258776;
-  --radius: 0.5rem;
+  --secondary: #f0f4f2;
+  --secondary-foreground: #1e2825;
+  --muted: #edf2f0;
+  --muted-foreground: #5c6c66;
+  --accent: #e2f2ed;
+  --accent-foreground: #0d4d3f;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8e5;
+  --input: #d1dcda;
+  --ring: #0e6553;
+  --radius: 0.625rem;
 }
 
 .dark {
-  --background: #111412;
-  --foreground: #edf1ee;
-  --card: #171b18;
-  --card-foreground: #edf1ee;
-  --popover: #171b18;
-  --popover-foreground: #edf1ee;
-  --primary: #65c7ad;
-  --primary-foreground: #0b2a23;
-  --secondary: #202521;
-  --secondary-foreground: #e3e8e4;
-  --muted: #202521;
-  --muted-foreground: #9ba69f;
-  --accent: #1b352e;
-  --accent-foreground: #92d9c6;
-  --destructive: #f97066;
-  --border: #2a302c;
-  --input: #39413b;
-  --ring: #65c7ad;
+  --background: #0d1210;
+  --foreground: #edf3f0;
+  --card: #131a17;
+  --card-foreground: #edf3f0;
+  --popover: #131a17;
+  --popover-foreground: #edf3f0;
+  --primary: #4adeb7;
+  --primary-foreground: #04251d;
+  --secondary: #1a2420;
+  --secondary-foreground: #e1ebe6;
+  --muted: #1a2420;
+  --muted-foreground: #94a39d;
+  --accent: #17362d;
+  --accent-foreground: #6ee7c8;
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  --border: #23312b;
+  --input: #2d3e37;
+  --ring: #4adeb7;
 }
 
 @theme inline {
@@ -61,13 +63,14 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 3px);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
-  --font-sans: "Aptos", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --radius-lg: calc(var(--radius) + 3px);
+  --font-sans: "Inter", "Plus Jakarta Sans", "Noto Sans SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
 }
 
@@ -77,6 +80,7 @@
 
 html {
   background: var(--background);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -84,14 +88,33 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button,
 a,
 input {
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--primary) 24%, transparent);
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
 }
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 25%, transparent);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+}
+

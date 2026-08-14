@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/auth/session"
 import { db } from "@/lib/db"
 import { files, resourceFavorites, resources, shares } from "@/lib/db/schema"
 import { writeAudit } from "@/lib/audit/log"
-import { canViewResource } from "@/lib/permission"
+import { canEditResource, canViewResource } from "@/lib/permission"
 
 import { resourceSchema, type ResourceInput } from "./schemas"
 
@@ -25,6 +25,7 @@ export async function createResource(input: ResourceInput): Promise<ActionResult
 
   const [resource] = await db.insert(resources).values({
     name: parsed.data.name,
+    category: parsed.data.moduleKind === "WEBSITE" ? null : parsed.data.category || null,
     moduleKind: parsed.data.moduleKind,
     type: parsed.data.moduleKind === "WEBSITE" ? "WEBSITE" : "OTHER",
     url: parsed.data.moduleKind === "WEBSITE" ? parsed.data.url : null,
@@ -37,6 +38,7 @@ export async function createResource(input: ResourceInput): Promise<ActionResult
   }).returning({ id: resources.id })
   revalidatePath("/")
   revalidatePath("/resources")
+  revalidatePath("/websites")
   await writeAudit({ userId: user.id, action: "RESOURCE_CREATE", resourceId: resource.id, targetType: "RESOURCE", targetId: resource.id })
   return { success: true, data: { id: resource.id } }
 }
@@ -48,10 +50,12 @@ export async function updateResource(id: string, input: ResourceInput): Promise<
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "资源信息无效" }
   const resource = await db.query.resources.findFirst({ where: and(eq(resources.id, id), isNull(resources.deletedAt)) })
   if (!resource) return { success: false, error: "资源不存在" }
-  if (!user.isAdmin && resource.ownerId !== user.id) return { success: false, error: "无权编辑该资源" }
-  await db.update(resources).set({ name: parsed.data.name, moduleKind: parsed.data.moduleKind, type: parsed.data.moduleKind === "WEBSITE" ? "WEBSITE" : "OTHER", url: parsed.data.moduleKind === "WEBSITE" ? parsed.data.url : null, description: parsed.data.description, visibility: parsed.data.visibility, sensitivity: parsed.data.sensitivity, tags: JSON.stringify(parsed.data.tags), updatedAt: new Date() }).where(eq(resources.id, id))
+  if (!(await canEditResource(id))) return { success: false, error: "无权编辑该资源" }
+  await db.update(resources).set({ name: parsed.data.name, category: parsed.data.moduleKind === "WEBSITE" ? null : parsed.data.category || null, moduleKind: parsed.data.moduleKind, type: parsed.data.moduleKind === "WEBSITE" ? "WEBSITE" : "OTHER", url: parsed.data.moduleKind === "WEBSITE" ? parsed.data.url : null, description: parsed.data.description, visibility: parsed.data.visibility, sensitivity: parsed.data.sensitivity, tags: JSON.stringify(parsed.data.tags), updatedAt: new Date() }).where(eq(resources.id, id))
   revalidatePath("/")
   revalidatePath("/resources")
+  revalidatePath("/websites")
+  revalidatePath("/favorites")
   revalidatePath(`/resources/${id}`)
   await writeAudit({ userId: user.id, action: "RESOURCE_EDIT", resourceId: id, targetType: "RESOURCE", targetId: id })
   return { success: true, data: undefined }
@@ -68,6 +72,7 @@ export async function toggleFavorite(id: string): Promise<ActionResult<{ favorit
   else await db.insert(resourceFavorites).values({ userId: user.id, resourceId: id })
   revalidatePath("/")
   revalidatePath("/resources")
+  revalidatePath("/websites")
   revalidatePath("/favorites")
   revalidatePath(`/resources/${id}`)
   return { success: true, data: { favorited: !favorite } }
@@ -90,6 +95,8 @@ export async function deleteResource(id: string): Promise<ActionResult> {
   })
   revalidatePath("/")
   revalidatePath("/resources")
+  revalidatePath("/websites")
+  revalidatePath("/favorites")
   await writeAudit({ userId: user.id, action: "RESOURCE_DELETE", resourceId: id, targetType: "RESOURCE", targetId: id })
   return { success: true, data: undefined }
 }
@@ -99,5 +106,7 @@ export async function restoreResource(id: string): Promise<ActionResult> {
   if (!user) return { success: false, error: "仅管理员可以恢复资源" }
   await db.update(resources).set({ status: "ACTIVE", deletedAt: null, updatedAt: new Date() }).where(eq(resources.id, id))
   revalidatePath("/resources")
+  revalidatePath("/websites")
+  revalidatePath("/favorites")
   return { success: true, data: undefined }
 }

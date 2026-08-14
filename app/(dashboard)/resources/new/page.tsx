@@ -5,5 +5,5 @@ import { ResourceForm } from "@/components/resource/resource-form"
 import { Button } from "@/components/ui/button"
 
 export default function NewResourcePage() {
-  return <div className="mx-auto max-w-3xl px-4 py-7 md:px-8 md:py-9"><Button variant="ghost" size="sm" asChild><Link href="/resources"><ChevronLeft />返回列表</Link></Button><div className="mt-6"><h1 className="text-2xl font-semibold">新建内容</h1><p className="mt-2 text-sm text-muted-foreground">创建完整模块，或只保存一个独立网站地址。</p></div><div className="mt-6 rounded-xl border bg-card p-5 md:p-7"><ResourceForm /></div></div>
+  return <div className="mx-auto max-w-3xl px-4 py-7 md:px-8 md:py-9"><Button variant="ghost" size="sm" asChild><Link href="/resources"><ChevronLeft />返回模块</Link></Button><div className="mt-6"><h1 className="text-2xl font-semibold">新建模块</h1></div><div className="mt-6 rounded-xl border bg-card p-5 md:p-7"><ResourceForm /></div></div>
 }

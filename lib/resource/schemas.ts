@@ -6,6 +6,7 @@ export const sensitivitySchema = z.enum(["NORMAL", "INTERNAL", "CONFIDENTIAL", "
 
 export const resourceSchema = z.object({
   name: z.string().trim().min(1, "请输入模块名称").max(100),
+  category: z.string().trim().max(50, "分类最多 50 个字符").optional(),
   moduleKind: moduleKindSchema,
   url: z.string().trim().max(2000).optional(),
   description: z.string().trim().max(2000).optional(),

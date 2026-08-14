@@ -67,6 +67,7 @@ export const resources = sqliteTable(
       .primaryKey()
       .$defaultFn(() => randomUUID()),
     name: text("name").notNull(),
+    category: text("category"),
     moduleKind: text("module_kind", { enum: ["PROJECT", "TOOL", "KNOWLEDGE", "WEBSITE", "PERSONAL", "OTHER"] }).notNull().default("OTHER"),
     type: text("type", {
       enum: ["WEBSITE", "SERVER", "DATABASE", "DEVICE", "DOCUMENT", "SOFTWARE", "API", "OTHER"],
@@ -220,6 +221,9 @@ export const shares = sqliteTable("share", {
   expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
   allowPreview: integer("allow_preview", { mode: "boolean" }).notNull().default(true),
   allowDownload: integer("allow_download", { mode: "boolean" }).notNull().default(false),
+  allowCredentials: integer("allow_credentials", { mode: "boolean" }).notNull().default(false),
+  credentialIds: text("credential_ids"),
+  fileIds: text("file_ids"),
   maxViews: integer("max_views"),
   viewCount: integer("view_count").notNull().default(0),
   createdBy: text("created_by").notNull().references(() => users.id),

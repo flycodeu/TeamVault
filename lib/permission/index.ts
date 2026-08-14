@@ -1,6 +1,6 @@
 import "server-only"
 
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray, or } from "drizzle-orm"
 
 import { getCurrentUser } from "@/lib/auth/session"
 import { db } from "@/lib/db"
@@ -44,7 +44,7 @@ export const canShareResource = (resourceId: string) => canResource(resourceId, 
 export async function canViewCredential(credentialId: string) {
   const user = await getCurrentUser()
   if (!user) return false
-  const credential = await db.query.credentials.findFirst({ where: eq(credentials.id, credentialId) })
+  const credential = await db.query.credentials.findFirst({ where: eq(credentials.id, credentialId), columns: { id: true, resourceId: true, accessMode: true } })
   if (!credential || !(await canViewResource(credential.resourceId))) return false
   const resource = await db.query.resources.findFirst({ where: eq(resources.id, credential.resourceId) })
   if (!resource) return false
@@ -71,6 +71,30 @@ export async function canViewCredential(credentialId: string) {
     if (groupGrant) return true
   }
   return false
+}
+
+export async function listPermittedCredentialIds() {
+  const user = await getCurrentUser()
+  if (!user) return []
+  const viewIds = await listPermittedResourceIds("VIEW")
+  if (!viewIds.length) return []
+  if (user.isAdmin) return (await db.select({ id: credentials.id }).from(credentials).where(inArray(credentials.resourceId, viewIds))).map(row => row.id)
+
+  const secretResourceIds = await listPermittedResourceIds("VIEW_SECRET")
+  const memberships = await db.select({ groupId: groupMembers.groupId }).from(groupMembers).where(eq(groupMembers.userId, user.id))
+  const subjectGrant = memberships.length
+    ? or(
+        and(eq(credentialPermissions.subjectType, "USER"), eq(credentialPermissions.subjectId, user.id)),
+        and(eq(credentialPermissions.subjectType, "GROUP"), inArray(credentialPermissions.subjectId, memberships.map(membership => membership.groupId))),
+      )
+    : and(eq(credentialPermissions.subjectType, "USER"), eq(credentialPermissions.subjectId, user.id))
+  const grantIds = (await db.select({ credentialId: credentialPermissions.credentialId }).from(credentialPermissions).where(subjectGrant)).map(row => row.credentialId)
+  const access = [
+    secretResourceIds.length ? and(eq(credentials.accessMode, "RESOURCE"), inArray(credentials.resourceId, secretResourceIds)) : undefined,
+    grantIds.length ? inArray(credentials.id, grantIds) : undefined,
+  ].filter(condition => condition !== undefined)
+  if (!access.length) return []
+  return (await db.select({ id: credentials.id }).from(credentials).where(and(inArray(credentials.resourceId, viewIds), or(...access)))).map(row => row.id)
 }
 
 export async function listPermittedResourceIds(permission: ResourcePermission) {

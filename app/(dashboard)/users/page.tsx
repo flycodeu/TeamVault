@@ -1,24 +1,37 @@
-import { eq } from "drizzle-orm"
+import { and, count, desc, eq, inArray } from "drizzle-orm"
 import { ArrowRight, ShieldCheck, UserRoundPlus } from "lucide-react"
 import Link from "next/link"
 
 import { UserForm } from "@/components/admin/user-form"
 import { UserStatusButton } from "@/components/admin/user-status-button"
 import { Button } from "@/components/ui/button"
+import { Pagination } from "@/components/ui/pagination"
 import { requireAdminUser } from "@/lib/auth/guards"
 import { db } from "@/lib/db"
-import { groupMembers, groups, resourcePermissions } from "@/lib/db/schema"
+import { groupMembers, groups, resourcePermissions, users } from "@/lib/db/schema"
 
-export default async function UsersPage() {
+const pageSize = 20
+
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const currentUser = await requireAdminUser()
-  const [rows, memberships, directPermissions] = await Promise.all([
-    db.query.users.findMany(),
+  const query = await searchParams
+  const requestedPage = Number.parseInt(query.page ?? "1", 10)
+  const [[{ value: total }], [{ value: membershipTotal }]] = await Promise.all([
+    db.select({ value: count() }).from(users),
+    db.select({ value: count() }).from(groupMembers),
+  ])
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const currentPage = Math.min(Math.max(Number.isFinite(requestedPage) ? requestedPage : 1, 1), totalPages)
+  const rows = await db.query.users.findMany({ orderBy: [desc(users.createdAt)], limit: pageSize, offset: (currentPage - 1) * pageSize })
+  const pageUserIds = rows.map(user => user.id)
+  const [memberships, directPermissions] = pageUserIds.length ? await Promise.all([
     db
       .select({ userId: groupMembers.userId, groupId: groups.id, groupName: groups.name })
       .from(groupMembers)
-      .innerJoin(groups, eq(groupMembers.groupId, groups.id)),
-    db.query.resourcePermissions.findMany({ where: eq(resourcePermissions.subjectType, "USER") }),
-  ])
+      .innerJoin(groups, eq(groupMembers.groupId, groups.id))
+      .where(inArray(groupMembers.userId, pageUserIds)),
+    db.query.resourcePermissions.findMany({ where: and(eq(resourcePermissions.subjectType, "USER"), inArray(resourcePermissions.subjectId, pageUserIds)) }),
+  ]) : [[], []]
 
   const groupsByUser = new Map<string, typeof memberships>()
   for (const membership of memberships) {
@@ -36,7 +49,7 @@ export default async function UsersPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-semibold">成员管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{rows.length} 位成员 · {memberships.length} 个小组关系</p>
+          <p className="mt-1 text-sm text-muted-foreground">{total} 位成员 · {membershipTotal} 个小组关系</p>
         </div>
         <Button variant="outline" asChild>
           <Link href="/groups">小组与模块授权 <ArrowRight /></Link>
@@ -66,7 +79,7 @@ export default async function UsersPage() {
                 <div className="flex flex-wrap gap-1.5">
                   {userGroups.length ? userGroups.map(group => <span key={group.groupId} className="rounded bg-muted px-2 py-1 text-xs">{group.groupName}</span>) : <span className="text-xs text-muted-foreground">未加入小组</span>}
                 </div>
-                <p className="text-xs text-muted-foreground">{user.isAdmin ? "全部模块" : `${directResourceCount} 个直接授权`}</p>
+                <p className="text-xs text-muted-foreground">{user.isAdmin ? "全部内容" : `${directResourceCount} 个直接授权`}</p>
                 <span className={user.status === "ACTIVE" ? "w-fit rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300" : "w-fit rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"}>{user.status === "ACTIVE" ? "正常" : "已禁用"}</span>
                 <UserStatusButton userId={user.id} active={user.status === "ACTIVE"} disabled={currentUser.id === user.id} />
               </article>
@@ -79,6 +92,7 @@ export default async function UsersPage() {
           <UserForm />
         </aside>
       </div>
+      <Pagination pathname="/users" currentPage={currentPage} pageSize={pageSize} total={total} />
     </div>
   )
 }

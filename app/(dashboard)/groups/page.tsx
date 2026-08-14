@@ -30,8 +30,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-7 md:px-8 md:py-9">
       <div>
-        <h1 className="text-2xl font-semibold">小组与模块授权</h1>
-        <p className="mt-1 text-sm text-muted-foreground">先组织成员，再决定小组可以访问哪些模块。</p>
+        <h1 className="text-2xl font-semibold">小组与内容授权</h1>
       </div>
 
       <div className="mt-7 grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -45,7 +44,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
               return (
                 <Link key={group.id} href={`/groups?group=${group.id}`} className={cn("block rounded-md px-3 py-3 transition-colors", selected ? "bg-accent text-accent-foreground" : "hover:bg-muted")}>
                   <p className="truncate text-sm font-medium">{group.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{memberCount} 位成员 · {resourceCount} 个模块</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{memberCount} 位成员 · {resourceCount} 项内容</p>
                 </Link>
               )
             })}
@@ -66,7 +65,7 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
               </div>
               <div className="flex gap-2 text-xs">
                 <span className="rounded-full bg-muted px-2.5 py-1">{selectedMembers.length} 位成员</span>
-                <span className="rounded-full bg-muted px-2.5 py-1">{selectedGrants.length} 个模块</span>
+                <span className="rounded-full bg-muted px-2.5 py-1">{selectedGrants.length} 项内容</span>
               </div>
             </header>
             <div className="grid divide-y xl:grid-cols-2 xl:divide-x xl:divide-y-0">
@@ -75,14 +74,14 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
                 <MemberEditor groupId={selectedGroup.id} members={selectedMembers} users={allUsers} />
               </div>
               <div className="p-5">
-                <div className="mb-4 flex items-center gap-2"><FolderLock className="size-4 text-primary" /><h3 className="text-sm font-semibold">模块权限</h3></div>
-                <GroupResourceEditor groupId={selectedGroup.id} resources={resourceRows.map(resource => ({ id: resource.id, name: resource.name, type: resource.moduleKind }))} grants={selectedGrants.map(grant => ({ resourceId: grant.resourceId, canViewSecret: grant.canViewSecret, canViewFile: grant.canViewFile, canDownload: grant.canDownload, canEdit: grant.canEdit, canShare: grant.canShare }))} />
+                <div className="mb-4 flex items-center gap-2"><FolderLock className="size-4 text-primary" /><h3 className="text-sm font-semibold">内容权限</h3></div>
+                <GroupResourceEditor groupId={selectedGroup.id} resources={resourceRows.map(resource => ({ id: resource.id, name: resource.name, type: resource.category || resource.moduleKind }))} grants={selectedGrants.map(grant => ({ resourceId: grant.resourceId, canViewSecret: grant.canViewSecret, canViewFile: grant.canViewFile, canDownload: grant.canDownload, canEdit: grant.canEdit, canShare: grant.canShare }))} />
               </div>
             </div>
           </section>
         ) : (
           <section className="grid min-h-80 place-items-center rounded-lg border border-dashed bg-card text-center">
-            <div><FolderLock className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 text-sm font-medium">创建小组后即可授权模块</p></div>
+            <div><FolderLock className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 text-sm font-medium">创建小组后即可授权内容</p></div>
           </section>
         )}
       </div>

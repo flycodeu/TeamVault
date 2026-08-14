@@ -7,15 +7,15 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { deleteResource } from "@/lib/resource/actions"
 
-export function ResourceDeleteButton({ resourceId, resourceName, compact = false }: { resourceId: string; resourceName: string; compact?: boolean }) {
+export function ResourceDeleteButton({ resourceId, resourceName, compact = false, redirectTo = "/resources", noun = "模块" }: { resourceId: string; resourceName: string; compact?: boolean; redirectTo?: string; noun?: string }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
 
   async function remove() {
-    if (!window.confirm(`删除模块“${resourceName}”？模块将从列表隐藏，相关外部分享会立即失效。`)) return
+    if (!window.confirm(`删除${noun}“${resourceName}”？删除后将从列表隐藏，相关外部分享会立即失效。`)) return
     setPending(true)
     const result = await deleteResource(resourceId)
-    if (result.success) { router.push("/resources"); router.refresh() }
+    if (result.success) { router.push(redirectTo); router.refresh() }
     else { window.alert(result.error); setPending(false) }
   }
 
