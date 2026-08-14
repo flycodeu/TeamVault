@@ -21,15 +21,10 @@ export default function NewResourcePage() {
         </div>
 
         <div className="flex items-center gap-3 mt-1">
-          <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-xs">
-            <FolderPlus className="size-5" />
+          <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary shadow-xs">
+            <FolderPlus className="size-4.5" />
           </span>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">新建共享模块</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              创建用于存放项目资料、操作手册、文件与加密凭据的专属共享空间
-            </p>
-          </div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">新建共享模块</h1>
         </div>
       </div>
 

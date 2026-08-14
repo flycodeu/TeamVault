@@ -200,12 +200,9 @@ export function ResourceForm({
           {/* Module Kind Selector Card */}
           {!isWebsite ? (
             <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-primary" />
-                  <h2 className="text-sm font-bold tracking-tight text-foreground">模块类型定位</h2>
-                </div>
-                <span className="text-[11px] text-muted-foreground">选择最符合当前业务场景的分类</span>
+              <div className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-primary" />
+                <h2 className="text-xs font-bold tracking-tight text-foreground">模块类型定位</h2>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -218,14 +215,14 @@ export function ResourceForm({
                       type="button"
                       onClick={() => setSelectedKind(option.value)}
                       className={cn(
-                        "flex items-start gap-3 rounded-xl border p-3.5 text-left transition relative duration-200",
+                        "flex items-start gap-3 rounded-xl border p-3 text-left transition relative duration-200",
                         active
                           ? "border-primary bg-primary/10 ring-1 ring-primary/40 shadow-xs text-foreground"
                           : "border-border/70 bg-background/50 text-muted-foreground hover:border-primary/40 hover:bg-accent/20 hover:text-foreground",
                       )}
                     >
-                      <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", option.color)}>
-                        <Icon className="size-4.5" />
+                      <span className={cn("grid size-8.5 shrink-0 place-items-center rounded-xl", option.color)}>
+                        <Icon className="size-4" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between">
@@ -234,7 +231,7 @@ export function ResourceForm({
                           </p>
                           {active ? <Check className="size-3.5 text-primary stroke-[3]" /> : null}
                         </div>
-                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-2">
+                        <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground/70 line-clamp-2">
                           {option.desc}
                         </p>
                       </div>
@@ -246,19 +243,19 @@ export function ResourceForm({
           ) : null}
 
           {/* Core Info Card */}
-          <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-5">
-            <div className="flex items-center gap-2 border-b border-border/60 pb-3.5">
+          <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-4">
+            <div className="flex items-center gap-2 border-b border-border/60 pb-3">
               <span className="size-2 rounded-full bg-primary" />
-              <h2 className="text-sm font-bold tracking-tight text-foreground">
+              <h2 className="text-xs font-bold tracking-tight text-foreground">
                 {isWebsite ? "网站基础资料" : "基本信息与说明"}
               </h2>
             </div>
 
-            <div className="space-y-4.5">
+            <div className="space-y-4">
               {/* Name */}
               <div className="space-y-1.5">
                 <Label htmlFor="name" className="text-xs font-bold text-foreground">
-                  {isWebsite ? "网站平台名称" : "模块资料库名称"}{" "}
+                  {isWebsite ? "网站名称" : "模块名称"}{" "}
                   <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -267,11 +264,11 @@ export function ResourceForm({
                   defaultValue={resource?.name}
                   placeholder={
                     isWebsite
-                      ? "例如：Label Studio 标注平台、生产环境 Grafana 监控"
-                      : "例如：2026核心系统升级项目、现场巡检规范手册、核心运维凭据"
+                      ? "例如：Label Studio 标注平台、Grafana 监控"
+                      : "例如：核心系统升级项目、现场巡检规范手册"
                   }
                   required
-                  className="h-10 text-xs md:text-sm bg-background/80"
+                  className="h-9 text-xs md:text-sm bg-background/80 placeholder:text-muted-foreground/50"
                 />
               </div>
 

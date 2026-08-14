@@ -1,0 +1,54 @@
+name: Build and Deploy TeamVault to Linux Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Test & Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Typecheck & Lint
+        run: |
+          npm run typecheck
+          npm run lint
+
+      - name: Build Next.js Production App
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          TEAMVAULT_MASTER_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+  # Optional SSH Auto Deploy step if secrets are configured
+  deploy-to-server:
+    name: Deploy to Linux Server
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && vars.SERVER_HOST != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.SERVER_HOST }}
+          username: ${{ vars.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ vars.SERVER_PORT || 22 }}
+          script: |
+            cd ${{ vars.SERVER_APP_DIR || '/opt/teamvault' }}
+            chmod +x scripts/deploy.sh
+            ./scripts/deploy.sh

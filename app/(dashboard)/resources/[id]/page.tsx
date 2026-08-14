@@ -12,7 +12,7 @@ import {
   Wrench,
 } from "lucide-react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 
 import { CredentialSection } from "@/components/credential/credential-section"
 import { FileList } from "@/components/file/file-list"
@@ -67,7 +67,10 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
   const { id } = await params
   const resource = await db.query.resources.findFirst({ where: and(eq(resources.id, id), isNull(resources.deletedAt)) })
   if (!resource || !(await canViewResource(id))) notFound()
-  const isWebsite = resource.moduleKind === "WEBSITE"
+  if (resource.moduleKind === "WEBSITE") {
+    redirect(`/websites/${id}`)
+  }
+  const isWebsite = false
 
   const [currentUser, mayViewFiles, mayEdit, mayShare] = await Promise.all([
     getCurrentUser(),
@@ -77,9 +80,9 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
   ])
   const mayDelete = Boolean(currentUser?.isAdmin || currentUser?.id === resource.ownerId)
   const [allCredentials, resourceFiles, moduleLinks, owner] = await Promise.all([
-    isWebsite ? [] : db.query.credentials.findMany({ where: eq(credentials.resourceId, id) }),
-    !isWebsite && mayViewFiles ? db.query.files.findMany({ where: eq(files.resourceId, id) }) : [],
-    isWebsite ? [] : db.query.resourceLinks.findMany({ where: eq(resourceLinks.resourceId, id) }),
+    db.query.credentials.findMany({ where: eq(credentials.resourceId, id) }),
+    mayViewFiles ? db.query.files.findMany({ where: eq(files.resourceId, id) }) : [],
+    db.query.resourceLinks.findMany({ where: eq(resourceLinks.resourceId, id) }),
     db.query.users.findFirst({ where: eq(users.id, resource.ownerId) }),
   ])
   const visibleCredentials = mayEdit
@@ -111,8 +114,8 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
   const subjects = [
     ...workspaceUsers
       .filter(user => user.id !== resource.ownerId)
-      .map(user => ({ id: user.id, label: user.displayName, type: "USER" as const })),
-    ...workspaceGroups.map(group => ({ id: group.id, label: group.name, type: "GROUP" as const })),
+      .map(user => ({ id: user.id, label: `${user.displayName} (${user.username})`, type: "USER" as const })),
+    ...workspaceGroups.map(group => ({ id: group.id, label: `群组: ${group.name}`, type: "GROUP" as const })),
   ]
   const meta = kindMeta[resource.moduleKind] ?? kindMeta.OTHER
   const KindIcon = meta.icon
@@ -126,92 +129,63 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
     tags = []
   }
 
-  const panels: ResourceDetailPanel[] = []
-  panels.push({
-    id: "overview",
-    label: isWebsite ? "网站直达" : "基本介绍",
-    description: isWebsite ? undefined : "模块用途、说明与标签。",
-    content: (
-      <section className="rounded-xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-4">
-        <div className="flex items-center justify-between gap-4 border-b pb-3.5">
-          <h3 className="text-sm font-bold text-foreground">{isWebsite ? "网站地址与备注" : "模块介绍与说明"}</h3>
-          {mayEdit ? (
-            <Button asChild variant="outline" size="sm" className="h-8 gap-1 text-xs">
-              <Link href={`/resources/${id}/edit`}>
-                <Pencil className="size-3.5" />
-                <span>编辑信息</span>
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-
-        {isWebsite && resource.url ? (
-          <a
-            href={resource.url}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-between gap-4 rounded-xl border border-primary/30 bg-primary/5 p-4.5 transition hover:border-primary/60 hover:bg-primary/10"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-base font-semibold text-primary">{resource.url}</p>
-              {resource.description ? (
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{resource.description}</p>
-              ) : null}
-            </div>
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <ExternalLink className="size-4.5" />
-            </span>
-          </a>
-        ) : resource.description ? (
-          <p className="max-w-4xl whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-            {resource.description}
-          </p>
-        ) : (
-          <div className="rounded-xl border border-dashed bg-muted/20 px-5 py-8 text-center">
-            <p className="text-sm text-muted-foreground">暂未填写模块介绍说明。</p>
+  const panels: ResourceDetailPanel[] = [
+    {
+      id: "overview",
+      label: "概览信息",
+      description: "基本信息、所属分类与敏感等级。",
+      content: (
+        <section className="rounded-xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-4">
+          <div className="flex items-center justify-between gap-4 border-b pb-3.5">
+            <h3 className="text-sm font-bold text-foreground">基础资料</h3>
             {mayEdit ? (
-              <Button asChild variant="outline" size="sm" className="mt-3.5 h-8 text-xs">
+              <Button asChild variant="outline" size="sm" className="h-8 gap-1 text-xs">
                 <Link href={`/resources/${id}/edit`}>
-                  <Pencil className="size-3.5 mr-1" /> 补充介绍
+                  <Pencil className="size-3.5" />
+                  <span>编辑信息</span>
                 </Link>
               </Button>
             ) : null}
           </div>
-        )}
+          <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
+            {resource.description || "暂无描述"}
+          </p>
+          {isWebsite && resource.url ? (
+            <div className="rounded-xl border border-border/80 bg-accent/20 p-3.5 flex items-center justify-between">
+              <div className="min-w-0 pr-3">
+                <p className="text-[11px] font-semibold text-muted-foreground">独立访问站点 (URL)</p>
+                <p className="text-xs font-mono font-medium text-foreground truncate mt-0.5">{resource.url}</p>
+              </div>
+              <Button asChild size="sm" className="h-8 text-xs font-medium shrink-0">
+                <a href={resource.url} target="_blank" rel="noreferrer">
+                  <ExternalLink className="size-3.5 mr-1" /> 直达访问
+                </a>
+              </Button>
+            </div>
+          ) : null}
+          {tags.length ? (
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              {tags.map(tag => (
+                <span
+                  key={tag}
+                  className="rounded-lg bg-accent/60 px-2 py-0.5 text-xs font-medium text-accent-foreground"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ),
+    },
+  ]
 
-        {!isWebsite && tags.length ? (
-          <div className="pt-3 flex flex-wrap items-center gap-1.5 border-t border-border/60">
-            <span className="text-xs text-muted-foreground mr-1">标签:</span>
-            {tags.map(tag => (
-              <span
-                key={tag}
-                className="rounded-md border bg-muted/60 px-2.5 py-0.5 text-xs text-muted-foreground font-medium"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </section>
-    ),
-  })
-
-  if (!isWebsite && (mayEdit || moduleLinks.length)) {
-    panels.push({
-      id: "links",
-      label: "关联链接",
-      count: moduleLinks.length,
-      description: "网站、外部文档与相关入口。",
-      content: <ResourceLinkManager resourceId={id} links={moduleLinks} mayEdit={mayEdit} />,
-    })
-  }
-
-  if (!isWebsite && (mayEdit || visibleCredentials.length)) {
+  if (mayEdit || visibleCredentials.length) {
     panels.push({
       id: "credentials",
-      label: "账号凭据",
+      label: isWebsite ? "携带账号与密码" : "账号凭据",
       count: visibleCredentials.length,
-      description: "按成员或小组控制账号与密钥的可见范围。",
+      description: isWebsite ? "该网站可携带的登录账号、密码或 API Key，并可精细指定成员可见范围。" : "按成员或小组控制账号与密钥的可见范围。",
       content: (
         <CredentialSection
           resourceId={id}
@@ -228,10 +202,20 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
     })
   }
 
-  if (!isWebsite && (mayEdit || resourceFiles.length)) {
+  if (mayEdit || moduleLinks.length) {
+    panels.push({
+      id: "links",
+      label: isWebsite ? "关联子链/分站" : "关联链接",
+      count: moduleLinks.length,
+      description: "网站、外部文档与相关入口。",
+      content: <ResourceLinkManager resourceId={id} links={moduleLinks} mayEdit={mayEdit} />,
+    })
+  }
+
+  if (mayEdit || resourceFiles.length) {
     panels.push({
       id: "files",
-      label: "文件资料",
+      label: isWebsite ? "配套手册/文档" : "文件资料",
       count: resourceFiles.length,
       description: "图片直接展示缩略图，文档与其他文件按类型归类。",
       content: (

@@ -1,6 +1,6 @@
 import { ChevronLeft, Edit3, Globe2 } from "lucide-react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 
 import { ResourceForm } from "@/components/resource/resource-form"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,11 @@ export default async function EditResourcePage({ params }: { params: Promise<{ i
 
   if (!resource || !(await canEditResource(id))) notFound()
 
-  const isWebsite = resource.moduleKind === "WEBSITE"
+  if (resource.moduleKind === "WEBSITE") {
+    redirect(`/websites/${id}/edit`)
+  }
+
+  const isWebsite = false
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8 space-y-6">
@@ -37,17 +41,12 @@ export default async function EditResourcePage({ params }: { params: Promise<{ i
         </div>
 
         <div className="flex items-center gap-3 mt-1">
-          <span className="grid size-10 place-items-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30 shadow-xs">
-            {isWebsite ? <Globe2 className="size-5" /> : <Edit3 className="size-5" />}
+          <span className="grid size-9 place-items-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-xs">
+            {isWebsite ? <Globe2 className="size-4.5" /> : <Edit3 className="size-4.5" />}
           </span>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-              编辑{isWebsite ? "网站资料" : "共享模块"}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              修改基本信息、所属分类、访问权限或安全敏感等级
-            </p>
-          </div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+            编辑{isWebsite ? "网站资料" : "共享模块"}
+          </h1>
         </div>
       </div>
 

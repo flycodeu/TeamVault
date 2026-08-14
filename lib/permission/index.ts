@@ -15,12 +15,38 @@ export async function canResource(resourceId: string, permission: ResourcePermis
   const resource = await db.query.resources.findFirst({ where: eq(resources.id, resourceId) })
   if (!resource || resource.deletedAt) return false
   if (resource.ownerId === user.id) return true
-  if (permission === "VIEW" && (resource.visibility === "TEAM" || resource.visibility === "PUBLIC")) return true
-  const direct = await db.query.resourcePermissions.findFirst({ where: and(eq(resourcePermissions.resourceId, resourceId), eq(resourcePermissions.subjectType, "USER"), eq(resourcePermissions.subjectId, user.id)) })
+
+  const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
+
+  if (resource.visibility === "TEAM" || resource.visibility === "PUBLIC") {
+    if (permission === "VIEW") return true
+    if (isWebsite && permission === "EDIT") return true
+  }
+
+  const direct = await db.query.resourcePermissions.findFirst({
+    where: and(
+      eq(resourcePermissions.resourceId, resourceId),
+      eq(resourcePermissions.subjectType, "USER"),
+      eq(resourcePermissions.subjectId, user.id),
+    ),
+  })
   if (direct && permissionFlag(direct, permission)) return true
-  const memberships = await db.select({ groupId: groupMembers.groupId }).from(groupMembers).where(eq(groupMembers.userId, user.id))
+
+  const memberships = await db
+    .select({ groupId: groupMembers.groupId })
+    .from(groupMembers)
+    .where(eq(groupMembers.userId, user.id))
   for (const membership of memberships) {
-    const group = await db.query.resourcePermissions.findFirst({ where: and(eq(resourcePermissions.resourceId, resourceId), eq(resourcePermissions.subjectType, "GROUP"), eq(resourcePermissions.subjectId, membership.groupId)) })
+    if (resource.visibility === "GROUP" && isWebsite && (permission === "VIEW" || permission === "EDIT")) {
+      return true
+    }
+    const group = await db.query.resourcePermissions.findFirst({
+      where: and(
+        eq(resourcePermissions.resourceId, resourceId),
+        eq(resourcePermissions.subjectType, "GROUP"),
+        eq(resourcePermissions.subjectId, membership.groupId),
+      ),
+    })
     if (group && permissionFlag(group, permission)) return true
   }
   return false
@@ -44,13 +70,27 @@ export const canShareResource = (resourceId: string) => canResource(resourceId, 
 export async function canViewCredential(credentialId: string) {
   const user = await getCurrentUser()
   if (!user) return false
-  const credential = await db.query.credentials.findFirst({ where: eq(credentials.id, credentialId), columns: { id: true, resourceId: true, accessMode: true } })
-  if (!credential || !(await canViewResource(credential.resourceId))) return false
-  const resource = await db.query.resources.findFirst({ where: eq(resources.id, credential.resourceId) })
-  if (!resource) return false
-  if (user.isAdmin || resource.ownerId === user.id) return true
-  if (credential.accessMode === "RESOURCE") return canViewSecret(credential.resourceId)
+  if (user.isAdmin) return true
 
+  const credential = await db.query.credentials.findFirst({ where: eq(credentials.id, credentialId) })
+  if (!credential) return false
+
+  const resource = await db.query.resources.findFirst({ where: eq(resources.id, credential.resourceId) })
+  if (!resource || resource.deletedAt) return false
+  if (resource.ownerId === user.id) return true
+
+  if (!(await canViewResource(credential.resourceId))) return false
+
+  const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
+
+  if (credential.accessMode === "RESOURCE") {
+    if (isWebsite && (resource.visibility === "TEAM" || resource.visibility === "PUBLIC")) {
+      return true
+    }
+    return canViewSecret(credential.resourceId)
+  }
+
+  // RESTRICTED mode: check direct user grant
   const direct = await db.query.credentialPermissions.findFirst({
     where: and(
       eq(credentialPermissions.credentialId, credentialId),
@@ -59,6 +99,8 @@ export async function canViewCredential(credentialId: string) {
     ),
   })
   if (direct) return true
+
+  // Check group grant
   const memberships = await db.select({ groupId: groupMembers.groupId }).from(groupMembers).where(eq(groupMembers.userId, user.id))
   for (const membership of memberships) {
     const groupGrant = await db.query.credentialPermissions.findFirst({

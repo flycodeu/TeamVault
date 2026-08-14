@@ -95,9 +95,9 @@ export function CredentialForm({
           <Input
             id="credential-name"
             name="name"
-            placeholder="例如：主系统管理员账号、生产环境 DB"
+            placeholder="例如：主管理员账号、生产环境 DB"
             required
-            className="h-9 text-xs bg-card"
+            className="h-9 text-xs bg-card placeholder:text-muted-foreground/50"
           />
         </div>
 
@@ -123,15 +123,15 @@ export function CredentialForm({
         {/* Username */}
         <div className="space-y-1.5">
           <Label htmlFor="credential-username" className="text-xs font-semibold">
-            用户名 / 账号 (Username)
+            用户名 / 账号
           </Label>
           <div className="relative">
-            <User className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <User className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />
             <Input
               id="credential-username"
               name="username"
-              placeholder="例如：admin / developer@team.com"
-              className="h-9 pl-8.5 text-xs bg-card font-mono"
+              placeholder="例如：admin / dev_user"
+              className="h-9 pl-8.5 text-xs bg-card font-mono placeholder:text-muted-foreground/50"
             />
           </div>
         </div>
@@ -139,18 +139,18 @@ export function CredentialForm({
         {/* Secret Password */}
         <div className="space-y-1.5">
           <Label htmlFor="credential-secret" className="text-xs font-semibold">
-            密码 / 密钥 (Secret) <span className="text-destructive">*</span>
+            密码 / 密钥 <span className="text-destructive">*</span>
           </Label>
           <div className="relative">
-            <Lock className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Lock className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />
             <Input
               id="credential-secret"
               name="secret"
               type={showSecret ? "text" : "password"}
-              placeholder="输入安全密码或 Secret"
+              placeholder="输入安全密码"
               required
               autoComplete="new-password"
-              className="h-9 pl-8.5 pr-8.5 text-xs bg-card font-mono"
+              className="h-9 pl-8.5 pr-8.5 text-xs bg-card font-mono placeholder:text-muted-foreground/50"
             />
             <button
               type="button"
@@ -216,13 +216,13 @@ export function CredentialForm({
         <div className="mt-3 grid gap-2.5 pt-2 border-t border-border/50">
           <Input
             name="extra"
-            placeholder="附加信息：如 Port: 3306, DB: production_v2, Region: ap-east-1"
-            className="h-8.5 text-xs bg-background"
+            placeholder="附加参数：如 Port: 3306, DB: prod_v2"
+            className="h-8.5 text-xs bg-background placeholder:text-muted-foreground/50"
           />
           <Input
             name="description"
-            placeholder="用途说明：如 仅用于月度数据备份，日常操作请勿使用"
-            className="h-8.5 text-xs bg-background"
+            placeholder="用途说明：如 生产环境备份专用"
+            className="h-8.5 text-xs bg-background placeholder:text-muted-foreground/50"
           />
         </div>
       </details>
