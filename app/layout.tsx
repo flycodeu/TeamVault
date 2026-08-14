@@ -10,7 +10,12 @@ export const metadata: Metadata = {
     default: "TeamVault",
     template: "%s · TeamVault",
   },
-  description: "轻量、安全的团队模块资料库",
+  description: "轻量、安全的团队模块与加密凭据资料库",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: ["/favicon.svg"],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 }
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

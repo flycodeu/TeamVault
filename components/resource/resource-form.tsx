@@ -1,6 +1,21 @@
 "use client"
 
-import { BookOpen, Boxes, FolderKanban, Globe2, UserRound, Wrench } from "lucide-react"
+import {
+  BookOpen,
+  Boxes,
+  Check,
+  ExternalLink,
+  FolderKanban,
+  Globe2,
+  Lock,
+  Shield,
+  ShieldAlert,
+  Sparkles,
+  Tag,
+  UserRound,
+  Users,
+  Wrench,
+} from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -11,37 +26,104 @@ import type { Resource } from "@/lib/db/schema"
 import { createResource, updateResource } from "@/lib/resource/actions"
 import { cn } from "@/lib/utils"
 
-const visibilityOptions = [
-  ["TEAM", "团队可见（小组内所有人可查看）"],
-  ["GROUP", "按授权可见（仅指定成员/小组可访问）"],
-  ["PRIVATE", "仅自己和管理员"],
-  ["PUBLIC", "全员公开"],
-] as const
+const visibilityOptions: Array<{
+  value: Resource["visibility"]
+  label: string
+  desc: string
+  icon: typeof Users
+}> = [
+  {
+    value: "TEAM",
+    label: "团队可见",
+    desc: "小组内所有已授权成员可自由查看与使用",
+    icon: Users,
+  },
+  {
+    value: "GROUP",
+    label: "指定群组",
+    desc: "仅限授权的成员或专属群组可访问",
+    icon: ShieldAlert,
+  },
+  {
+    value: "PRIVATE",
+    label: "私有专属",
+    desc: "仅创建者本人与系统超级管理员可见",
+    icon: Lock,
+  },
+  {
+    value: "PUBLIC",
+    label: "全员公开",
+    desc: "系统内所有登录人员均可查阅",
+    icon: Globe2,
+  },
+]
 
-const sensitivityOptions = [
-  ["NORMAL", "普通公开级别"],
-  ["INTERNAL", "团队内部使用"],
-  ["CONFIDENTIAL", "机密级别（严格控制）"],
-  ["SECRET", "高度机密（禁止匿名外链分享）"],
-] as const
+const sensitivityOptions: Array<{
+  value: Resource["sensitivity"]
+  label: string
+  badge: string
+}> = [
+  { value: "NORMAL", label: "普通公开 (Normal)", badge: "bg-muted text-muted-foreground" },
+  { value: "INTERNAL", label: "团队内部 (Internal)", badge: "bg-blue-500/10 text-blue-700 dark:text-blue-300" },
+  { value: "CONFIDENTIAL", label: "机密等级 (Confidential)", badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300" },
+  { value: "SECRET", label: "高度机密 (Secret)", badge: "bg-rose-500/10 text-rose-700 dark:text-rose-300" },
+]
 
 const moduleKindOptions: Array<{
   value: Resource["moduleKind"]
   label: string
   desc: string
   icon: typeof Boxes
+  color: string
 }> = [
-  { value: "PROJECT", label: "项目", desc: "业务开发、团队专项或研发项目资料", icon: FolderKanban },
-  { value: "TOOL", label: "工具 / 系统", desc: "内部运维、常用工具、后台平台", icon: Wrench },
-  { value: "KNOWLEDGE", label: "知识 / 文档", desc: "技术规范、使用手册、工作流知识库", icon: BookOpen },
-  { value: "PERSONAL", label: "个人", desc: "个人临时笔记、备忘或私有空间", icon: UserRound },
-  { value: "OTHER", label: "其他", desc: "通用资源归档或杂项共享", icon: Boxes },
+  {
+    value: "PROJECT",
+    label: "项目研发",
+    desc: "业务系统、工程专项或研发资料",
+    icon: FolderKanban,
+    color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
+  },
+  {
+    value: "TOOL",
+    label: "工具平台",
+    desc: "运维管理、后台平台、常用小工具",
+    icon: Wrench,
+    color: "text-blue-600 dark:text-blue-400 bg-blue-500/10",
+  },
+  {
+    value: "KNOWLEDGE",
+    label: "知识手册",
+    desc: "技术规范、操作手册、交付知识库",
+    icon: BookOpen,
+    color: "text-purple-600 dark:text-purple-400 bg-purple-500/10",
+  },
+  {
+    value: "PERSONAL",
+    label: "个人空间",
+    desc: "个人私有文档、临时备忘或测试资料",
+    icon: UserRound,
+    color: "text-amber-600 dark:text-amber-400 bg-amber-500/10",
+  },
+  {
+    value: "OTHER",
+    label: "通用归档",
+    desc: "团队其他杂项或未归类共享资源",
+    icon: Boxes,
+    color: "text-slate-600 dark:text-slate-400 bg-slate-500/10",
+  },
 ]
 
-export function ResourceForm({ resource, mode = "MODULE" }: { resource?: Resource; mode?: "MODULE" | "WEBSITE" }) {
+export function ResourceForm({
+  resource,
+  mode = "MODULE",
+}: {
+  resource?: Resource
+  mode?: "MODULE" | "WEBSITE"
+}) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
+
   const [tags, setTags] = useState(() => {
     try {
       return (JSON.parse(resource?.tags ?? "[]") as string[]).join(", ")
@@ -54,6 +136,10 @@ export function ResourceForm({ resource, mode = "MODULE" }: { resource?: Resourc
   const [selectedKind, setSelectedKind] = useState<Resource["moduleKind"]>(
     resource?.moduleKind ?? (isWebsite ? "WEBSITE" : "PROJECT"),
   )
+  const [selectedVisibility, setSelectedVisibility] = useState<Resource["visibility"]>(
+    resource?.visibility ?? "TEAM",
+  )
+  const [websiteUrl, setWebsiteUrl] = useState(resource?.url ?? "")
 
   async function submit(formData: FormData) {
     setPending(true)
@@ -62,15 +148,24 @@ export function ResourceForm({ resource, mode = "MODULE" }: { resource?: Resourc
       name: String(formData.get("name") ?? "").trim(),
       category: isWebsite ? "" : String(formData.get("category") ?? "").trim(),
       moduleKind: isWebsite ? ("WEBSITE" as const) : selectedKind,
-      url: String(formData.get("url") ?? "").trim(),
+      url: isWebsite ? websiteUrl.trim() : String(formData.get("url") ?? "").trim(),
       description: String(formData.get("description") ?? "").trim(),
-      visibility: String(formData.get("visibility") ?? "TEAM") as Resource["visibility"],
+      visibility: selectedVisibility,
       sensitivity: String(formData.get("sensitivity") ?? "NORMAL") as Resource["sensitivity"],
-      tags: tags.split(/[,，]/).map(tag => tag.trim()).filter(Boolean),
+      tags: tags
+        .split(/[,，]/)
+        .map(tag => tag.trim())
+        .filter(Boolean),
     }
 
     if (!input.name) {
       setError(isWebsite ? "请输入网站名称" : "请输入模块名称")
+      setPending(false)
+      return
+    }
+
+    if (isWebsite && !input.url) {
+      setError("请输入网站访问地址 (URL)")
       setPending(false)
       return
     }
@@ -98,167 +193,286 @@ export function ResourceForm({ resource, mode = "MODULE" }: { resource?: Resourc
   }
 
   return (
-    <form action={submit} className="space-y-7">
-      {!isWebsite ? (
-        <div className="space-y-3">
-          <Label className="text-sm font-medium">模块类型</Label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {moduleKindOptions.map(option => {
-              const Icon = option.icon
-              const active = selectedKind === option.value
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setSelectedKind(option.value)}
-                  className={cn(
-                    "flex flex-col items-start rounded-xl border p-3 text-left transition",
-                    active
-                      ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-sm"
-                      : "border-border bg-card/60 hover:border-primary/40 hover:bg-accent/40 text-muted-foreground",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "grid size-8 place-items-center rounded-lg transition",
-                      active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    <Icon className="size-4" />
-                  </span>
-                  <p className={cn("mt-2 text-xs font-semibold", active ? "text-primary" : "text-foreground")}>
-                    {option.label}
-                  </p>
-                  <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{option.desc}</p>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="name">{isWebsite ? "网站名称" : "模块名称"}</Label>
-          <Input
-            id="name"
-            name="name"
-            defaultValue={resource?.name}
-            placeholder={isWebsite ? "例如：Label Studio 标注平台" : "例如：入炉资料、现场巡检数据、核心架构文档"}
-            required
-            className="h-10 text-sm"
-          />
-        </div>
-
-        {isWebsite ? (
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="url">网站地址 (URL)</Label>
-            <div className="relative">
-              <Globe2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="url"
-                name="url"
-                type="url"
-                defaultValue={resource?.url ?? ""}
-                placeholder="https://example.com"
-                required
-                className="h-10 pl-9 text-sm"
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Label htmlFor="category">自定义分类（可选）</Label>
-            <Input
-              id="category"
-              name="category"
-              defaultValue={resource?.category ?? ""}
-              placeholder="例如：文档库、图片库、数据分析"
-              className="h-10 text-sm"
-            />
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="visibility">可见范围</Label>
-          <select
-            id="visibility"
-            name="visibility"
-            defaultValue={resource?.visibility ?? "TEAM"}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            {visibilityOptions.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="description">{isWebsite ? "网站备注（可选）" : "模块介绍与说明（可选）"}</Label>
-          <textarea
-            id="description"
-            name="description"
-            defaultValue={resource?.description ?? ""}
-            rows={isWebsite ? 3 : 4}
-            placeholder={isWebsite ? "记录网站的主要用途、登录方式或注意事项" : "详细描述该模块的用途、包含内容与协作注意事项"}
-            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-        </div>
-
-        {isWebsite ? (
-          <input type="hidden" name="sensitivity" value="NORMAL" />
-        ) : (
-          <details className="group sm:col-span-2 rounded-xl border border-border/80 bg-muted/20 p-4 transition open:bg-muted/30">
-            <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold text-muted-foreground hover:text-foreground">
-              <span>高级设置（敏感级别与标签）</span>
-              <span className="text-[11px] text-primary group-open:hidden">+ 展开</span>
-            </summary>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 pt-2 border-t">
-              <div className="space-y-2">
-                <Label htmlFor="sensitivity">敏感级别</Label>
-                <select
-                  id="sensitivity"
-                  name="sensitivity"
-                  defaultValue={resource?.sensitivity ?? "NORMAL"}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
-                >
-                  {sensitivityOptions.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+    <form action={submit} className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Primary Column (8 cols on lg) */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Module Kind Selector Card */}
+          {!isWebsite ? (
+            <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="size-2 rounded-full bg-primary" />
+                  <h2 className="text-sm font-bold tracking-tight text-foreground">模块类型定位</h2>
+                </div>
+                <span className="text-[11px] text-muted-foreground">选择最符合当前业务场景的分类</span>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="tags">自定义标签</Label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {moduleKindOptions.map(option => {
+                  const Icon = option.icon
+                  const active = selectedKind === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSelectedKind(option.value)}
+                      className={cn(
+                        "flex items-start gap-3 rounded-xl border p-3.5 text-left transition relative duration-200",
+                        active
+                          ? "border-primary bg-primary/10 ring-1 ring-primary/40 shadow-xs text-foreground"
+                          : "border-border/70 bg-background/50 text-muted-foreground hover:border-primary/40 hover:bg-accent/20 hover:text-foreground",
+                      )}
+                    >
+                      <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", option.color)}>
+                        <Icon className="size-4.5" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className={cn("text-xs font-bold", active ? "text-primary" : "text-foreground")}>
+                            {option.label}
+                          </p>
+                          {active ? <Check className="size-3.5 text-primary stroke-[3]" /> : null}
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-2">
+                          {option.desc}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          {/* Core Info Card */}
+          <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-5">
+            <div className="flex items-center gap-2 border-b border-border/60 pb-3.5">
+              <span className="size-2 rounded-full bg-primary" />
+              <h2 className="text-sm font-bold tracking-tight text-foreground">
+                {isWebsite ? "网站基础资料" : "基本信息与说明"}
+              </h2>
+            </div>
+
+            <div className="space-y-4.5">
+              {/* Name */}
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-bold text-foreground">
+                  {isWebsite ? "网站平台名称" : "模块资料库名称"}{" "}
+                  <span className="text-destructive">*</span>
+                </Label>
                 <Input
-                  id="tags"
-                  value={tags}
-                  onChange={event => setTags(event.target.value)}
-                  placeholder="标签间用逗号分隔，如：前端, 生产, 2026"
-                  className="h-10 text-sm"
+                  id="name"
+                  name="name"
+                  defaultValue={resource?.name}
+                  placeholder={
+                    isWebsite
+                      ? "例如：Label Studio 标注平台、生产环境 Grafana 监控"
+                      : "例如：2026核心系统升级项目、现场巡检规范手册、核心运维凭据"
+                  }
+                  required
+                  className="h-10 text-xs md:text-sm bg-background/80"
+                />
+              </div>
+
+              {/* Website URL Input */}
+              {isWebsite ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="url" className="text-xs font-bold text-foreground">
+                      网站直达访问地址 (URL) <span className="text-destructive">*</span>
+                    </Label>
+                    {websiteUrl ? (
+                      <a
+                        href={websiteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                      >
+                        <span>测试直达</span>
+                        <ExternalLink className="size-3" />
+                      </a>
+                    ) : null}
+                  </div>
+                  <div className="relative">
+                    <Globe2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="url"
+                      name="url"
+                      type="url"
+                      value={websiteUrl}
+                      onChange={e => setWebsiteUrl(e.target.value)}
+                      placeholder="https://console.example.com"
+                      required
+                      className="h-10 pl-9 text-xs md:text-sm bg-background/80 font-mono"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <Label htmlFor="description" className="text-xs font-bold text-foreground">
+                  {isWebsite ? "使用说明与登录指引（可选）" : "模块详细介绍与协作注意事项（可选）"}
+                </Label>
+                <textarea
+                  id="description"
+                  name="description"
+                  defaultValue={resource?.description ?? ""}
+                  rows={isWebsite ? 3 : 4}
+                  placeholder={
+                    isWebsite
+                      ? "记录该平台的用途、默认账号说明、内网访问要求或配置说明..."
+                      : "详细说明本模块包含的资料文件、账号分类、适用人群与维护注意事项..."
+                  }
+                  className="flex w-full rounded-xl border border-input bg-background/80 px-3 py-2.5 text-xs md:text-sm shadow-xs transition placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring leading-relaxed"
                 />
               </div>
             </div>
-          </details>
-        )}
-      </div>
-
-      {error ? (
-        <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+          </section>
         </div>
-      ) : null}
 
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <Button type="button" variant="outline" onClick={() => router.back()}>
-          取消
-        </Button>
-        <Button type="submit" disabled={pending} className="min-w-28 shadow-sm">
-          {pending ? "保存中..." : resource ? "保存修改" : isWebsite ? "保存网站" : "立即创建模块"}
-        </Button>
+        {/* Right Secondary / Settings Column (4 cols on lg) */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Visibility & Security Card */}
+          <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-5">
+            <div className="flex items-center gap-2 border-b border-border/60 pb-3.5">
+              <Shield className="size-4 text-primary" />
+              <h2 className="text-sm font-bold tracking-tight text-foreground">权限与分类设置</h2>
+            </div>
+
+            {/* Visibility Mode Radio List */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-foreground">访问可见范围</Label>
+              <div className="grid grid-cols-1 gap-1.5">
+                  {visibilityOptions.map(option => {
+                    const Icon = option.icon
+                    const active = selectedVisibility === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setSelectedVisibility(option.value)}
+                        className={cn(
+                          "flex items-center justify-between rounded-xl border p-2.5 text-left transition",
+                          active
+                            ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30"
+                            : "border-border/60 bg-background/60 text-muted-foreground hover:border-primary/40 hover:bg-accent/20",
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Icon className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                          <div className="min-w-0">
+                            <p className={cn("text-xs font-bold", active ? "text-foreground" : "text-foreground/80")}>
+                              {option.label}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground truncate">{option.desc}</p>
+                          </div>
+                        </div>
+                        {active ? <Check className="size-3.5 text-primary shrink-0 ml-2" /> : null}
+                      </button>
+                    )
+                  })}
+                </div>
+            </div>
+
+            {/* Category */}
+            {!isWebsite ? (
+              <div className="space-y-1.5 pt-2 border-t border-border/50">
+                <Label htmlFor="category" className="text-xs font-bold text-foreground">
+                  自定义业务分类
+                </Label>
+                <Input
+                  id="category"
+                  name="category"
+                  defaultValue={resource?.category ?? ""}
+                  placeholder="例如：核心业务、生产工具、培训资料"
+                  className="h-9 text-xs bg-background/80"
+                />
+              </div>
+            ) : null}
+
+            {/* Sensitivity */}
+            <div className="space-y-1.5 pt-2 border-t border-border/50">
+              <Label htmlFor="sensitivity" className="text-xs font-bold text-foreground">
+                安全保密级别
+              </Label>
+              <select
+                id="sensitivity"
+                name="sensitivity"
+                defaultValue={resource?.sensitivity ?? "NORMAL"}
+                className="flex h-9 w-full rounded-xl border border-input bg-background/80 px-3 text-xs shadow-xs transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {sensitivityOptions.map(item => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-1.5 pt-2 border-t border-border/50">
+              <div className="flex items-center gap-1.5">
+                <Tag className="size-3.5 text-muted-foreground" />
+                <Label htmlFor="tags" className="text-xs font-bold text-foreground">
+                  检索标签 (Tags)
+                </Label>
+              </div>
+              <Input
+                id="tags"
+                value={tags}
+                onChange={e => setTags(e.target.value)}
+                placeholder="以逗号隔开，如：前端, 交付, 2026"
+                className="h-9 text-xs bg-background/80"
+              />
+            </div>
+          </section>
+
+          {/* Action Submission Card */}
+          <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-4">
+            {error ? (
+              <div
+                role="alert"
+                className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive font-medium"
+              >
+                {error}
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <Button
+                type="submit"
+                disabled={pending}
+                className="w-full h-10 text-xs md:text-sm font-bold shadow-xs gap-2"
+              >
+                <Sparkles className="size-4" />
+                <span>
+                  {pending
+                    ? "正在处理中..."
+                    : resource
+                      ? "保存修改内容"
+                      : isWebsite
+                        ? "立即添加网站"
+                        : "立即创建模块"}
+                </span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+                className="w-full h-9 text-xs font-medium"
+              >
+                取消并返回
+              </Button>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground leading-relaxed text-center px-1">
+              创建后即可在详情中继续上传配套文件、录入加密账号密码及生成外部交付包。
+            </p>
+          </section>
+        </div>
       </div>
     </form>
   )

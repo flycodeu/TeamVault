@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { ResourceLink } from "@/lib/db/schema"
@@ -59,15 +60,17 @@ export function ResourceLinkManager({
     setPending(false)
   }
 
+  const [deletingLink, setDeletingLink] = useState<{ id: string; title: string } | null>(null)
+
   async function copyUrl(id: string, url: string) {
     await navigator.clipboard.writeText(url)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 1600)
   }
 
-  async function remove(id: string) {
-    if (!window.confirm("确定删除这个链接？")) return
-    const result = await deleteResourceLink(id)
+  async function handleConfirmDelete() {
+    if (!deletingLink) return
+    const result = await deleteResourceLink(deletingLink.id)
     if (!result.success) setError(result.error)
     else router.refresh()
   }
@@ -179,7 +182,7 @@ export function ResourceLinkManager({
                             variant="ghost"
                             size="icon"
                             className="size-7.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => remove(link.id)}
+                            onClick={() => setDeletingLink({ id: link.id, title: link.title })}
                             aria-label={`删除 ${link.title}`}
                             title="删除"
                           >
@@ -222,6 +225,17 @@ export function ResourceLinkManager({
           <p className="text-xs text-muted-foreground mt-0.5">可添加常用的开发平台、API 文档、项目原型等访问地址</p>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deletingLink)}
+        onClose={() => setDeletingLink(null)}
+        onConfirm={handleConfirmDelete}
+        title="确定删除该链接？"
+        targetName={deletingLink?.title}
+        description="删除后该外链将从当前模块中移除。"
+        confirmText="确认删除链接"
+        variant="danger"
+      />
     </section>
   )
 }

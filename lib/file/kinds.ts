@@ -3,8 +3,9 @@ import type { FileRecord } from "@/lib/db/schema"
 export const allowedFileExtensions = [
   "pdf", "ppt", "pptx", "doc", "docx", "xls", "xlsx",
   "png", "jpg", "jpeg", "webp", "gif", "svg",
+  "mp4", "webm", "mov", "mp3", "wav",
   "txt", "md", "json", "xml", "yaml", "yml", "sql", "log", "csv",
-  "zip",
+  "zip", "7z", "tar", "gz",
 ] as const
 
 export const uploadAccept = allowedFileExtensions.map(extension => `.${extension}`).join(",")
@@ -13,17 +14,17 @@ export const fileKindOrder = ["IMAGE", "DOCUMENT", "TEXT", "ARCHIVE", "OTHER"] a
 export type FileKind = typeof fileKindOrder[number]
 
 export const fileKindMeta: Record<FileKind, { label: string; storageDirectory: string }> = {
-  IMAGE: { label: "图片", storageDirectory: "images" },
-  DOCUMENT: { label: "文档", storageDirectory: "documents" },
+  IMAGE: { label: "图片与视觉", storageDirectory: "images" },
+  DOCUMENT: { label: "文档与演示", storageDirectory: "documents" },
   TEXT: { label: "文本与数据", storageDirectory: "text" },
-  ARCHIVE: { label: "压缩文件", storageDirectory: "archives" },
+  ARCHIVE: { label: "压缩包与媒体", storageDirectory: "archives" },
   OTHER: { label: "其他文件", storageDirectory: "other" },
 }
 
 const imageExtensions = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg"])
 const documentExtensions = new Set(["pdf", "ppt", "pptx", "doc", "docx", "xls", "xlsx"])
 const textExtensions = new Set(["txt", "md", "json", "xml", "yaml", "yml", "sql", "log", "csv"])
-const archiveExtensions = new Set(["zip"])
+const archiveExtensions = new Set(["zip", "7z", "tar", "gz", "mp4", "webm", "mov", "mp3", "wav"])
 
 export function getFileKind(file: Pick<FileRecord, "extension" | "mimeType">): FileKind {
   const extension = file.extension?.toLowerCase() ?? ""

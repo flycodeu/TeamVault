@@ -364,7 +364,7 @@ function PasswordGate({ token, hasError }: { token: string; hasError: boolean })
               required
               autoFocus
               className="h-10 w-full rounded-xl border border-border bg-background px-3.5 text-center font-mono tracking-widest text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              placeholder="输入 6 位提取码或访问密码"
+              placeholder="输入 4 位提取码或访问密码"
             />
             {hasError ? (
               <p className="text-xs text-destructive text-center font-medium pt-1">提取密码错误，请重试</p>

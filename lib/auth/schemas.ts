@@ -3,7 +3,7 @@ import { z } from "zod"
 export const usernameSchema = z
   .string()
   .trim()
-  .min(3, "用户名至少需要 3 个字符")
+  .min(2, "用户名至少需要 2 个字符")
   .max(40, "用户名不能超过 40 个字符")
   .regex(/^[a-zA-Z0-9._-]+$/, "用户名只能包含字母、数字、点、下划线和连字符")
 

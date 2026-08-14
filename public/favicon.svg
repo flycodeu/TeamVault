@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e6553" />
+      <stop offset="100%" stop-color="#04251d" />
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6ee7c8" />
+      <stop offset="100%" stop-color="#2dd4bf" />
+    </linearGradient>
+  </defs>
+  <!-- Background rounded rectangle -->
+  <rect width="36" height="36" rx="9" fill="url(#bgGrad)" />
+  
+  <!-- Outer Shield -->
+  <path d="M18 29C18 29 27 24.5 27 17.5V8.5L18 5L9 8.5V17.5C9 24.5 18 29 18 29Z" 
+        fill="#031e17" 
+        stroke="url(#glowGrad)" 
+        stroke-width="1.8" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+  
+  <!-- Central Vault Lock & Keyhole -->
+  <circle cx="18" cy="15" r="3" fill="url(#glowGrad)" />
+  <path d="M18 18V22" stroke="url(#glowGrad)" stroke-width="2.2" stroke-linecap="round" />
+</svg>

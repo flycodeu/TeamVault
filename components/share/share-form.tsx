@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -89,7 +90,7 @@ export function ShareForm({
   function generateRandomPassword() {
     const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
     let res = ""
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       res += chars.charAt(Math.floor(Math.random() * chars.length))
     }
     setPassword(res)
@@ -212,10 +213,12 @@ export function ShareForm({
     setTimeout(() => setCopiedHandover(false), 2000)
   }
 
-  async function handleRevoke(id: string) {
-    if (!window.confirm("确定撤销该分享链接？撤销后外部人员将立即无法访问。")) return
-    setRevokingId(id)
-    const result = await revokeShare(id, resourceId)
+  const [shareToRevoke, setShareToRevoke] = useState<string | null>(null)
+
+  async function handleConfirmRevoke() {
+    if (!shareToRevoke) return
+    setRevokingId(shareToRevoke)
+    const result = await revokeShare(shareToRevoke, resourceId)
     if (result.success) {
       router.refresh()
     } else {
@@ -426,13 +429,13 @@ export function ShareForm({
                 className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-medium"
               >
                 <Dices className="size-3" />
-                <span>生成 6 位安全码</span>
+                <span>生成 4 位安全码</span>
               </button>
             </div>
             <Input
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="留空则为无密码直接访问"
+              placeholder="留空则为无密码直接访问（可输入 4 位提取码）"
               className="h-9 text-xs font-mono"
             />
           </div>
@@ -613,7 +616,7 @@ export function ShareForm({
                     variant="ghost"
                     size="sm"
                     disabled={isRevoking}
-                    onClick={() => handleRevoke(share.id)}
+                    onClick={() => setShareToRevoke(share.id)}
                     className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0 self-end sm:self-center"
                   >
                     <Trash2 className="size-3.5 mr-1" />
@@ -625,6 +628,16 @@ export function ShareForm({
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(shareToRevoke)}
+        onClose={() => setShareToRevoke(null)}
+        onConfirm={handleConfirmRevoke}
+        title="确定撤销该分享链接？"
+        description="撤销后该外部协作交付包链接将立即永久失效，外部人员将无法再打开或查看该页面的任何内容。"
+        confirmText="确认撤销失效"
+        variant="danger"
+      />
     </div>
   )
 }

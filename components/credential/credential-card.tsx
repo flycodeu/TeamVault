@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { deleteCredential, revealCredential } from "@/lib/credential/actions"
 import { cn } from "@/lib/utils"
 import { CredentialAccessEditor } from "./credential-access-editor"
@@ -91,6 +92,8 @@ export function CredentialCard({ credential, mayEdit, subjects, accessGrants }: 
     }
   }
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
   async function copyUsername() {
     if (!credential.username) return
     await navigator.clipboard.writeText(credential.username)
@@ -105,8 +108,7 @@ export function CredentialCard({ credential, mayEdit, subjects, accessGrants }: 
     setTimeout(() => setCopiedExtra(false), 1600)
   }
 
-  async function remove() {
-    if (!window.confirm(`确定删除凭据「${credential.name}」吗？`)) return
+  async function handleConfirmDelete() {
     const result = await deleteCredential(credential.id)
     if (result.success) {
       router.refresh()
@@ -186,7 +188,7 @@ export function CredentialCard({ credential, mayEdit, subjects, accessGrants }: 
               variant="ghost"
               size="icon"
               className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              onClick={remove}
+              onClick={() => setShowDeleteConfirm(true)}
               title="删除凭据"
               aria-label="删除凭据"
             >
@@ -292,6 +294,17 @@ export function CredentialCard({ credential, mayEdit, subjects, accessGrants }: 
           ) : null}
         </>
       )}
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="确定删除该凭据？"
+        targetName={credential.name}
+        description="删除后该凭据及加密密钥将永久销毁，且无法恢复。"
+        confirmText="确认删除凭据"
+        variant="danger"
+      />
     </article>
   )
 }

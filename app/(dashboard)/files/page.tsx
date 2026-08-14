@@ -24,10 +24,10 @@ const pageSize = 24
 
 const fileKindTabs: Array<{ key: string; label: string; icon: typeof FileText }> = [
   { key: "ALL", label: "全部文件", icon: FolderOpen },
-  { key: "IMAGE", label: "图片资料", icon: FileImage },
-  { key: "DOCUMENT", label: "文档资料", icon: FileText },
-  { key: "TEXT", label: "代码/脚本", icon: FileCode2 },
-  { key: "ARCHIVE", label: "压缩包", icon: FileArchive },
+  { key: "IMAGE", label: "图片与视觉", icon: FileImage },
+  { key: "DOCUMENT", label: "文档与演示", icon: FileText },
+  { key: "TEXT", label: "代码与数据", icon: FileCode2 },
+  { key: "ARCHIVE", label: "压缩包与媒体", icon: FileArchive },
 ]
 
 export default async function FilesPage({

@@ -2,7 +2,7 @@ import { Globe2, LogOut, Plus, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 
 import { MobileNav } from "@/components/layout/mobile-nav"
-import { ThemeToggle } from "@/components/layout/theme-toggle"
+import { ThemeSwitcher } from "@/components/layout/theme-switcher"
 import { Button } from "@/components/ui/button"
 import { logoutAction } from "@/lib/auth/actions"
 
@@ -47,7 +47,7 @@ export function Header({ user }: HeaderProps) {
 
       <div className="h-4 w-px bg-border/80 mx-1" />
 
-      <ThemeToggle />
+      <ThemeSwitcher />
 
       <div className="flex items-center gap-2.5 rounded-full border border-border/80 bg-background/80 py-1 pl-1 pr-3 shadow-xs">
         <div className="grid size-7.5 place-items-center rounded-full bg-gradient-to-br from-primary to-emerald-700 text-xs font-bold text-primary-foreground">
