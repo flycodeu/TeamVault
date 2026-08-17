@@ -17,6 +17,7 @@ import {
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
+import { FilePreviewModal } from "@/components/file/file-preview-modal"
 import { getPreviewKind } from "@/lib/file/kinds"
 import { cn } from "@/lib/utils"
 
@@ -66,6 +67,7 @@ export function GuestFileList({
   allowDownload: boolean
 }) {
   const [activeFolder, setActiveFolder] = useState<string>("ALL")
+  const [previewFile, setPreviewFile] = useState<GuestFileItem | null>(null)
 
   // Group and compute folders
   const allFolders = useMemo(() => {
@@ -94,7 +96,7 @@ export function GuestFileList({
             type="button"
             onClick={() => setActiveFolder("ALL")}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition",
+              "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition cursor-pointer",
               activeFolder === "ALL"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "bg-background text-muted-foreground hover:text-foreground border border-border/60",
@@ -102,7 +104,7 @@ export function GuestFileList({
           >
             <FolderOpen className="size-3.5" />
             <span>全部文件</span>
-            <span className="ml-0.5 rounded-full bg-black/10 dark:bg-white/15 px-1.5 py-0.2 text-[10px]">
+            <span className="ml-1 rounded-full bg-black/10 dark:bg-white/15 px-1.5 py-0.2 text-[10px]">
               {files.length}
             </span>
           </button>
@@ -119,7 +121,7 @@ export function GuestFileList({
                 type="button"
                 onClick={() => setActiveFolder(folder)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition",
+                  "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-xs"
                     : "bg-background text-muted-foreground hover:text-foreground border border-border/60",
@@ -127,7 +129,7 @@ export function GuestFileList({
               >
                 <Folder className="size-3.5" />
                 <span>{label}</span>
-                <span className="ml-0.5 rounded-full bg-black/10 dark:bg-white/15 px-1.5 py-0.2 text-[10px]">
+                <span className="ml-1 rounded-full bg-black/10 dark:bg-white/15 px-1.5 py-0.2 text-[10px]">
                   {count}
                 </span>
               </button>
@@ -156,9 +158,19 @@ export function GuestFileList({
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <p className="truncate text-xs font-semibold text-foreground" title={file.originalName}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (allowPreview && previewKind !== "NONE") setPreviewFile(file)
+                      }}
+                      className={cn(
+                        "truncate text-xs font-semibold text-foreground text-left",
+                        allowPreview && previewKind !== "NONE" ? "hover:text-primary cursor-pointer" : "cursor-default",
+                      )}
+                      title={file.originalName}
+                    >
                       {file.originalName}
-                    </p>
+                    </button>
                     {folderLabel ? (
                       <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.2 text-[10px] font-medium text-muted-foreground shrink-0">
                         <Folder className="size-2.5 text-primary" />
@@ -175,19 +187,15 @@ export function GuestFileList({
               <div className="flex shrink-0 items-center gap-1">
                 {allowPreview && previewKind !== "NONE" ? (
                   <Button
-                    asChild
+                    type="button"
                     variant="ghost"
                     size="sm"
+                    onClick={() => setPreviewFile(file)}
                     className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground"
+                    title="在线预览"
                   >
-                    <Link
-                      href={`/s/${token}/files/${file.id}/preview`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <Eye className="size-3.5 mr-1" />
-                      <span>预览</span>
-                    </Link>
+                    <Eye className="size-3.5 mr-1" />
+                    <span>预览</span>
                   </Button>
                 ) : null}
 
@@ -209,6 +217,17 @@ export function GuestFileList({
           )
         })}
       </div>
+
+      {/* File Preview Modal for Shared View */}
+      <FilePreviewModal
+        file={previewFile}
+        files={displayedFiles.filter(f => getPreviewKind(f) !== "NONE")}
+        open={Boolean(previewFile)}
+        onClose={() => setPreviewFile(null)}
+        onSelectFile={f => setPreviewFile(f as GuestFileItem)}
+        guestToken={token}
+        allowDownload={allowDownload}
+      />
     </div>
   )
 }

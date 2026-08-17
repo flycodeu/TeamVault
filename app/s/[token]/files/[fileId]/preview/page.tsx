@@ -1,8 +1,9 @@
-import { ChevronLeft, Download } from "lucide-react"
+import { Download } from "lucide-react"
 import { eq } from "drizzle-orm"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
+import { PreviewBackButton } from "@/components/file/preview-back-button"
 import { FilePreviewViewer } from "@/components/file/preview-viewer"
 import { Button } from "@/components/ui/button"
 import { db } from "@/lib/db"
@@ -20,12 +21,7 @@ export default async function SharedFilePreviewPage({ params }: { params: Promis
   return (
     <main className="min-h-screen bg-background">
       <div className="flex h-16 items-center justify-between border-b px-4 md:px-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/s/${token}`}>
-            <ChevronLeft />
-            返回分享
-          </Link>
-        </Button>
+        <PreviewBackButton fallbackHref={`/s/${token}`} label="返回分享" />
         <p className="min-w-0 truncate px-4 text-sm font-medium">{file.originalName}</p>
         {access.share.allowDownload ? (
           <Button asChild variant="outline" size="sm">

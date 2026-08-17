@@ -71,8 +71,15 @@ const visibilityLabels: Record<string, string> = {
   PUBLIC: "全员公开",
 }
 
-export default async function ResourceDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default async function ResourceDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const [{ id }, query] = await Promise.all([params, searchParams])
+  const initialTab = query.tab?.trim()
   const resource = await db.query.resources.findFirst({ where: and(eq(resources.id, id), isNull(resources.deletedAt)) })
   if (!resource || !(await canViewResource(id))) notFound()
   const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
@@ -397,7 +404,7 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
       </header>
 
       {/* Workspace Tabs & Panels */}
-      <ResourceDetailWorkspace panels={panels} />
+      <ResourceDetailWorkspace panels={panels} initialTab={initialTab} />
     </div>
   )
 }

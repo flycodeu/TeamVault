@@ -2,7 +2,7 @@
 
 import { FileText, FolderOpen, Info, KeyRound, Link2, ShieldCheck, Network, Lock, Share2 } from "lucide-react"
 import type { ReactNode } from "react"
-import { useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { cn } from "@/lib/utils"
 
@@ -25,10 +25,27 @@ const icons: Record<ResourceDetailPanel["id"], typeof Info> = {
   shares: Share2,
 }
 
-export function ResourceDetailWorkspace({ panels }: { panels: ResourceDetailPanel[] }) {
-  const [activeId, setActiveId] = useState(panels[0]?.id)
-  const activePanel = panels.find(panel => panel.id === activeId) ?? panels[0]
+export function ResourceDetailWorkspace({
+  panels,
+  initialTab,
+}: {
+  panels: ResourceDetailPanel[]
+  initialTab?: string
+}) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const currentTabFromUrl = (searchParams.get("tab") || initialTab) as ResourceDetailPanel["id"] | null
+  const activePanel = panels.find(panel => panel.id === currentTabFromUrl) ?? panels[0]
+
   if (!activePanel) return null
+
+  function handleSelectTab(id: ResourceDetailPanel["id"]) {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("tab", id)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
 
   if (panels.length === 1) {
     return (
@@ -57,9 +74,9 @@ export function ResourceDetailWorkspace({ panels }: { panels: ResourceDetailPane
                 id={`tab-${panel.id}`}
                 aria-selected={active}
                 aria-controls={`panel-${panel.id}`}
-                onClick={() => setActiveId(panel.id)}
+                onClick={() => handleSelectTab(panel.id)}
                 className={cn(
-                  "flex h-9.5 min-w-24 items-center justify-center gap-2 rounded-lg px-4 text-xs font-semibold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-w-0 md:flex-1",
+                  "flex h-9.5 min-w-24 items-center justify-center gap-2 rounded-lg px-4 text-xs font-semibold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-w-0 md:flex-1 cursor-pointer",
                   active
                     ? "bg-primary text-primary-foreground shadow-xs shadow-primary/20"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
@@ -90,4 +107,3 @@ export function ResourceDetailWorkspace({ panels }: { panels: ResourceDetailPane
     </div>
   )
 }
-

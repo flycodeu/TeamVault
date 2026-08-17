@@ -46,6 +46,7 @@ import { batchDeleteFiles, deleteFile, deleteFolder, moveFiles, renameFolder } f
 import { fileKindMeta, fileKindOrder, getFileKind, getPreviewKind } from "@/lib/file/kinds"
 import { cn } from "@/lib/utils"
 import { FileActions } from "./file-actions"
+import { FilePreviewModal } from "./file-preview-modal"
 import { FileUploader } from "./file-uploader"
 
 function getExtensionBadge(ext: string | null) {
@@ -87,6 +88,7 @@ export function FileList({
   const [customFolders, setCustomFolders] = useState<string[]>([])
   const [exporting, setExporting] = useState(false)
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false)
+  const [previewFile, setPreviewFile] = useState<FileRecord | null>(null)
 
   // Dialog States
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false)
@@ -460,6 +462,7 @@ export function FileList({
                   mayEdit={mayEdit}
                   selectedIds={selectedIds}
                   onToggleSelect={toggleSelect}
+                  onPreview={setPreviewFile}
                 />
               ) : (
                 <DocumentList
@@ -467,6 +470,7 @@ export function FileList({
                   mayEdit={mayEdit}
                   selectedIds={selectedIds}
                   onToggleSelect={toggleSelect}
+                  onPreview={setPreviewFile}
                 />
               )}
             </section>
@@ -625,6 +629,15 @@ export function FileList({
         confirmText="确认删除文件夹"
         variant="danger"
       />
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        file={previewFile}
+        files={displayedFiles.filter(f => getPreviewKind(f) !== "NONE")}
+        open={Boolean(previewFile)}
+        onClose={() => setPreviewFile(null)}
+        onSelectFile={f => setPreviewFile(f as FileRecord)}
+      />
     </div>
   )
 }
@@ -634,11 +647,13 @@ function ImageGrid({
   mayEdit,
   selectedIds,
   onToggleSelect,
+  onPreview,
 }: {
   files: (FileRecord & { folder?: string | null })[]
   mayEdit: boolean
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
+  onPreview: (file: FileRecord) => void
 }) {
   return (
     <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -678,9 +693,10 @@ function ImageGrid({
               </span>
             ) : null}
 
-            <Link
-              href={`/files/${file.id}/preview`}
-              className="relative block aspect-[4/3] overflow-hidden bg-muted/60"
+            <button
+              type="button"
+              onClick={() => onPreview(file)}
+              className="relative block aspect-[4/3] w-full overflow-hidden bg-muted/60 text-left focus:outline-none cursor-pointer"
             >
               <Image
                 src={`/api/files/${file.id}/thumbnail`}
@@ -696,7 +712,7 @@ function ImageGrid({
                   <Eye className="size-3.5" /> 查看大图
                 </span>
               </div>
-            </Link>
+            </button>
 
             <div className="p-3">
               <p className="truncate text-xs font-semibold text-foreground" title={file.originalName}>
@@ -705,6 +721,14 @@ function ImageGrid({
               <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>{formatSize(file.size)}</span>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onPreview(file)}
+                    className="hover:text-primary transition font-medium cursor-pointer"
+                    title="预览大图"
+                  >
+                    预览
+                  </button>
                   <a
                     href={`/api/files/${file.id}/download`}
                     className="hover:text-primary transition font-medium"
@@ -728,11 +752,13 @@ function DocumentList({
   mayEdit,
   selectedIds,
   onToggleSelect,
+  onPreview,
 }: {
   files: (FileRecord & { folder?: string | null })[]
   mayEdit: boolean
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
+  onPreview: (file: FileRecord) => void
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border/80 bg-card divide-y divide-border/60">
@@ -777,9 +803,19 @@ function DocumentList({
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="truncate text-xs font-semibold text-foreground group-hover:text-primary transition">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (previewKind !== "NONE") onPreview(file)
+                    }}
+                    className={cn(
+                      "truncate text-xs font-semibold text-foreground transition text-left",
+                      previewKind !== "NONE" ? "hover:text-primary cursor-pointer" : "cursor-default",
+                    )}
+                    title={file.originalName}
+                  >
                     {file.originalName}
-                  </p>
+                  </button>
                   {folderLabel ? (
                     <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                       <Folder className="size-2.5" />
@@ -802,11 +838,16 @@ function DocumentList({
 
             <div className="flex shrink-0 items-center gap-1">
               {previewKind !== "NONE" ? (
-                <Button asChild variant="ghost" size="sm" className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground">
-                  <Link href={`/files/${file.id}/preview`}>
-                    <Eye className="size-3.5 mr-1" />
-                    <span>预览</span>
-                  </Link>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onPreview(file)}
+                  className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground"
+                  title="在线预览"
+                >
+                  <Eye className="size-3.5 mr-1" />
+                  <span>预览</span>
                 </Button>
               ) : null}
 

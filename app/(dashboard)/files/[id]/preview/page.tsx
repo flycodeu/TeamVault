@@ -1,7 +1,8 @@
-import { ChevronLeft, Download } from "lucide-react"
+import { Download } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
+import { PreviewBackButton } from "@/components/file/preview-back-button"
 import { FilePreviewViewer } from "@/components/file/preview-viewer"
 import { Button } from "@/components/ui/button"
 import { db } from "@/lib/db"
@@ -20,12 +21,10 @@ export default async function FilePreviewPage({ params }: { params: Promise<{ id
   return (
     <div className="min-h-screen">
       <div className="flex h-16 items-center justify-between border-b px-4 md:px-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/resources/${file.resourceId}`}>
-            <ChevronLeft />
-            返回模块
-          </Link>
-        </Button>
+        <PreviewBackButton
+          fallbackHref={`/resources/${file.resourceId}?tab=files`}
+          label="返回模块"
+        />
         <p className="min-w-0 truncate px-4 text-sm font-medium">{file.originalName}</p>
         <Button asChild variant="outline" size="sm">
           <Link href={`/api/files/${id}/download`}>

@@ -18,3 +18,4 @@ data/thumbnails/*
 data/temp/*
 !data/**/.gitkeep
 npm-debug.log*
+TeamVault_项目学习与面试分析.html
