@@ -39,7 +39,7 @@ function getExtensionBadge(ext: string | null) {
   if (["doc", "docx"].includes(e)) return { label: "DOC", bg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-900/30", icon: FileText }
   if (["xls", "xlsx", "csv"].includes(e)) return { label: "EXCEL", bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-900/30", icon: FileSpreadsheet }
   if (["txt", "md", "json", "yaml", "yml", "sql"].includes(e)) return { label: e.toUpperCase(), bg: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-200/50 dark:border-teal-900/30", icon: FileCode2 }
-  if (["mp4", "webm", "mov"].includes(e)) return { label: "VIDEO", bg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200/50 dark:border-indigo-900/30", icon: Film }
+  if (["mp4", "webm", "mov", "mkv", "avi"].includes(e)) return { label: "VIDEO", bg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200/50 dark:border-indigo-900/30", icon: Film }
   if (["mp3", "wav"].includes(e)) return { label: "AUDIO", bg: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-200/50 dark:border-violet-900/30", icon: Music }
   if (["zip", "7z", "tar", "gz"].includes(e)) return { label: "ZIP", bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200/50 dark:border-amber-900/30", icon: Archive }
   if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(e)) return { label: "IMG", bg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200/50 dark:border-purple-900/30", icon: FileImage }
@@ -231,6 +231,8 @@ export function FilePreviewModal({
               contentUrl={contentUrl}
               wordTextUrl={wordTextUrl}
               downloadUrl={allowDownload ? downloadUrl : undefined}
+              playableUrl={guestToken ? `/s/${guestToken}/files/${file.id}/video-playable` : `/api/files/${file.id}/video-playable`}
+              convertedUrl={guestToken ? `/s/${guestToken}/files/${file.id}/video-preview` : `/api/files/${file.id}/video-preview`}
               file={{
                 originalName: file.originalName,
                 mimeType: file.mimeType,

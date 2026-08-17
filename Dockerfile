@@ -33,6 +33,11 @@ RUN groupadd --system --gid 1001 teamvault \
   && mkdir -p /app/data/files /app/data/previews /app/data/thumbnails /app/data/temp \
   && chown -R teamvault:teamvault /app/data
 
+# FFmpeg：视频自动转码（浏览器不兼容的封装/编码 → H.264/AAC）
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder --chown=teamvault:teamvault /app/.next/standalone ./
 COPY --from=builder --chown=teamvault:teamvault /app/.next/static ./.next/static
 COPY --from=builder --chown=teamvault:teamvault /app/public ./public

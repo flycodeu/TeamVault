@@ -37,6 +37,8 @@ export default async function FilePreviewPage({ params }: { params: Promise<{ id
         contentUrl={`/api/files/${file.id}/content`}
         wordTextUrl={`/api/files/${file.id}/word-text`}
         downloadUrl={`/api/files/${file.id}/download`}
+        playableUrl={`/api/files/${file.id}/video-playable`}
+        convertedUrl={`/api/files/${file.id}/video-preview`}
         file={{
           originalName: file.originalName,
           mimeType: file.mimeType,

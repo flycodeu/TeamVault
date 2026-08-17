@@ -1,7 +1,7 @@
 "use client"
 
 import JSZip from "jszip"
-import { Download, FileText, FileWarning, Info, LoaderCircle, RotateCcw } from "lucide-react"
+import { Download, FileText, FileWarning, LoaderCircle, RotateCcw } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useState } from "react"
 
@@ -127,34 +127,13 @@ function ZipPreview({ name, size, url }: { name: string; size: number; url: stri
 }
 
 /**
- * 视频预览兼容策略：
- * 1. 平台优先支持 MP4（H.264/AAC）与 WebM（VP8/VP9/Opus）；
- * 2. 渲染前用 canPlayType 预检测，MOV 等容器兼容性不确定时给出提示条；
- * 3. 播放失败按错误码区分（编码不兼容 / 文件损坏 / 网络中断）给出明确指引；
- * 4. 长时间未加载到元数据时兜底提示，并提供重试与下载。
+ * 视频在线播放流程：
+ * 1. 请求 video-playable 接口：原文件可直接播放（MP4 H.264/AAC、WebM VP8/VP9）→ 直出；
+ * 2. 封装或编码不兼容（H.265/HEVC、ProRes、AV1、MOV/MKV 等）→ 服务端 FFmpeg 自动转码，
+ *    首次预览异步转换并轮询进度，转换完成后自动播放；原文件始终保留可下载；
+ * 3. 播放异常按错误码区分提示（编码不兼容 / 文件损坏 / 网络中断），并给出重试与下载。
  */
 const VIDEO_LOAD_TIMEOUT_MS = 20_000
-
-const VIDEO_CODEC_HINTS: Record<string, string> = {
-  mp4: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"',
-  webm: 'video/webm; codecs="vp9, opus"',
-}
-
-type Playability = "supported" | "uncertain"
-
-function detectPlayability(extension: string | null, mimeType: string): Playability {
-  const ext = extension?.toLowerCase() ?? ""
-  const probe = document.createElement("video")
-  const codecHint = VIDEO_CODEC_HINTS[ext]
-  if (codecHint && probe.canPlayType(codecHint)) return "supported"
-
-  const baseType = mimeType.startsWith("video/") ? mimeType : ext ? `video/${ext}` : ""
-  if (baseType && baseType !== "video/unknown" && probe.canPlayType(baseType)) return "supported"
-
-  // Chrome / Firefox 对 quicktime 等容器 canPlayType 通常返回 ""，但部分文件实际可播，
-  // 因此不直接判定不可播放，而是渲染播放器并提示兼容性不确定。
-  return "uncertain"
-}
 
 function describeVideoError(code: number | null): { title: string; desc: string } {
   switch (code) {
@@ -222,30 +201,71 @@ function VideoFallback({
   )
 }
 
+type VideoSourceState =
+  | { kind: "checking" }
+  | { kind: "ready"; url: string }
+  | { kind: "converting" }
+  | { kind: "failed"; reason: "too-large" | "convert-error" | "probe-error" | "unknown"; maxMb?: number }
+
 function VideoPreview({
-  url,
+  contentUrl,
+  playableUrl,
+  convertedUrl,
   downloadUrl,
-  file,
 }: {
-  url: string
+  contentUrl: string
+  playableUrl: string
+  convertedUrl: string
   downloadUrl?: string
-  file: { originalName: string; mimeType: string; extension: string | null }
 }) {
-  const [playability, setPlayability] = useState<Playability>(() => detectPlayability(file.extension, file.mimeType))
+  const [source, setSource] = useState<VideoSourceState>({ kind: "checking" })
   const [mediaError, setMediaError] = useState<number | null>(null)
   const [timedOut, setTimedOut] = useState(false)
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    if (mediaError !== null) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    async function check() {
+      try {
+        const response = await fetch(playableUrl, { cache: "no-store" })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const data = await response.json()
+        if (cancelled) return
+        if (data.status === "ready-original") {
+          setSource({ kind: "ready", url: contentUrl })
+        } else if (data.status === "ready-converted") {
+          setSource({ kind: "ready", url: convertedUrl })
+        } else if (data.status === "converting") {
+          setSource({ kind: "converting" })
+          timer = setTimeout(check, 2500)
+        } else if (data.status === "failed") {
+          setSource({ kind: "failed", reason: data.reason ?? "unknown", maxMb: data.maxMb })
+        } else {
+          setSource({ kind: "failed", reason: "unknown" })
+        }
+      } catch {
+        if (!cancelled) setSource({ kind: "failed", reason: "unknown" })
+      }
+    }
+    void check()
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [playableUrl, contentUrl, convertedUrl, attempt])
+
+  const readyUrl = source.kind === "ready" ? source.url : null
+  useEffect(() => {
+    if (mediaError !== null || !readyUrl) return
     const timer = setTimeout(() => setTimedOut(true), VIDEO_LOAD_TIMEOUT_MS)
     return () => clearTimeout(timer)
-  }, [mediaError, attempt])
+  }, [mediaError, readyUrl, attempt])
 
   const retry = () => {
-    setPlayability(detectPlayability(file.extension, file.mimeType))
     setMediaError(null)
     setTimedOut(false)
+    setSource(current => (current.kind === "failed" && current.reason !== "too-large" ? { kind: "checking" } : current))
     setAttempt(current => current + 1)
   }
 
@@ -265,17 +285,48 @@ function VideoPreview({
     )
   }
 
+  if (source.kind === "checking") {
+    return <PreviewMessage icon={<LoaderCircle className="size-6 animate-spin text-teal-500" />} title="正在检测视频兼容性…" />
+  }
+
+  if (source.kind === "converting") {
+    return (
+      <PreviewMessage
+        icon={<LoaderCircle className="size-6 animate-spin text-teal-500" />}
+        title="正在转换视频格式…"
+        desc="该视频的封装或编码与当前浏览器不兼容，首次预览会自动转码为 H.264/AAC 在线播放，完成后自动开始；原文件不受影响。"
+      />
+    )
+  }
+
+  if (source.kind === "failed") {
+    const messages: Record<"too-large" | "convert-error" | "probe-error" | "unknown", { title: string; desc: string }> = {
+      "too-large": {
+        title: "视频文件过大，暂不支持在线转码",
+        desc: `文件超过 ${source.maxMb ?? "1GB"} 自动转码上限。请下载源文件后使用本地播放器（VLC / PotPlayer）查看。`,
+      },
+      "convert-error": {
+        title: "视频转码失败",
+        desc: "服务器转码服务不可用或转换失败（请确认已安装 FFmpeg）。可下载源文件后使用本地播放器查看。",
+      },
+      "probe-error": {
+        title: "无法识别该视频",
+        desc: "未能解析视频的封装或编码信息，文件可能已损坏。请下载源文件后用本地播放器尝试打开。",
+      },
+      unknown: {
+        title: "视频加载失败",
+        desc: "网络异常或服务暂时不可用，请重试；若反复失败可下载源文件后查看。",
+      },
+    }
+    const info = messages[source.reason]
+    return <VideoFallback title={info.title} desc={info.desc} downloadUrl={downloadUrl} onRetry={retry} />
+  }
+
   return (
     <div className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center bg-black p-4">
-      {playability === "uncertain" ? (
-        <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center gap-1.5 bg-amber-500/90 px-4 py-2 text-center text-[11px] font-medium text-white">
-          <Info className="size-3.5 shrink-0" />
-          该封装格式兼容性不确定（如 MOV），若无法播放或没有声音，请下载后用 VLC / PotPlayer 等本地播放器查看。
-        </div>
-      ) : null}
       <video
         key={attempt}
-        src={url}
+        src={source.url}
         controls
         playsInline
         preload="metadata"
@@ -298,12 +349,16 @@ export function FilePreviewViewer({
   file,
   kind,
   downloadUrl,
+  playableUrl,
+  convertedUrl,
 }: {
   contentUrl: string
   wordTextUrl?: string
   file: PreviewFile
   kind: PreviewKind
   downloadUrl?: string
+  playableUrl?: string
+  convertedUrl?: string
 }) {
   if (kind === "PDF") return <PdfViewer url={contentUrl} />
   if (kind === "PRESENTATION") return <PresentationViewer name={file.originalName} size={file.size} url={contentUrl} />
@@ -324,7 +379,18 @@ export function FilePreviewViewer({
     )
   }
 
-  if (kind === "VIDEO") return <VideoPreview url={contentUrl} downloadUrl={downloadUrl} file={file} />
+  if (kind === "VIDEO") {
+    if (!playableUrl || !convertedUrl) {
+      return (
+        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-black p-4">
+          <video src={contentUrl} controls playsInline preload="metadata" className="max-h-[85vh] max-w-full bg-black shadow-2xl">
+            当前浏览器不支持视频播放。
+          </video>
+        </div>
+      )
+    }
+    return <VideoPreview contentUrl={contentUrl} playableUrl={playableUrl} convertedUrl={convertedUrl} downloadUrl={downloadUrl} />
+  }
 
   if (kind === "AUDIO") {
     return (

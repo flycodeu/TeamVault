@@ -44,7 +44,7 @@ TeamVault 面向小组内部场景，把散落在各处的东西收拢进「资�
 |---|---|---|
 | 🗂️ | **统一资源库** | 网站 / 服务器 / 数据库 / API / 文档等类型以卡片聚合，URL、IP、端口、标签一键可达 |
 | 🔐 | **凭据保险箱** | 一资源多凭据，支持密码、API Key、Token、SSH、数据库连接等 8 种类型，AES-256-GCM 加密存储 |
-| 📄 | **在线预览** | PDF / PPTX / DOCX / XLSX / CSV / 图片 / 视频 / 音频 / 文本 / ZIP 浏览器端只读预览，无需安装 Office |
+| 📄 | **在线预览** | PDF / PPTX / DOCX / XLSX / CSV / 图片 / 视频 / 音频 / 文本 / ZIP 浏览器端只读预览，无需安装 Office；视频编码不兼容时自动转码为 H.264/AAC 在线播放 |
 | 🔗 | **外部分享** | 临时分享链接：有效期、访问密码、访问次数、是否允许下载，随时撤销；凭据永不进入匿名分享 |
 | 👥 | **小组与权限** | 用户 / 小组两级授权，`VIEW` / `VIEW_SECRET` / `VIEW_FILE` / `DOWNLOAD` / `EDIT` / `SHARE` 细粒度控制 |
 | 📋 | **全程审计** | 登录、查看 / 复制密码、上传 / 下载 / 删除文件等关键操作全部留痕，可按用户与操作检索 |
@@ -73,7 +73,7 @@ TeamVault 面向小组内部场景，把散落在各处的东西收拢进「资�
 |---|---|---|
 | ![备忘](docs/screenshots/memos.png) | ![审计](docs/screenshots/audit.png) | ![设置](docs/screenshots/settings.png) |
 
-> 在线预览采用浏览器端只读方案，不依赖 LibreOffice 与在线编辑服务；超限文件（如 PPTX > 50MB）会明确降级为下载。视频优先支持 MP4（H.264/AAC）与 WebM（VP8/VP9/Opus），对 MOV 等兼容性不确定的封装会给出提示，不兼容的编码则明确引导下载后用 VLC / PotPlayer 等本地播放器查看。
+> 在线预览采用浏览器端只读方案，不依赖 LibreOffice 与在线编辑服务；超限文件（如 PPTX > 50MB）会明确降级为下载。视频优先支持 MP4（H.264/AAC）与 WebM（VP8/VP9/Opus）；MOV / MKV / AVI 及 H.265、ProRes、AV1 等不兼容封装或编码，首次预览时由 FFmpeg 自动转码（容器不兼容仅 remux、编码不兼容重编码为 H.264/AAC），转换完成后自动播放，原文件始终保留；超大文件（默认 >1GB）提示下载后用 VLC / PotPlayer 等本地播放器查看。
 
 ## 🏗️ 系统架构
 

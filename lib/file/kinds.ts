@@ -3,7 +3,7 @@ import type { FileRecord } from "@/lib/db/schema"
 export const allowedFileExtensions = [
   "pdf", "ppt", "pptx", "doc", "docx", "xls", "xlsx",
   "png", "jpg", "jpeg", "webp", "gif", "svg",
-  "mp4", "webm", "mov", "mp3", "wav",
+  "mp4", "webm", "mov", "mkv", "avi", "mp3", "wav",
   "txt", "md", "json", "xml", "yaml", "yml", "sql", "log", "csv",
   "zip", "7z", "tar", "gz",
 ] as const
@@ -24,12 +24,12 @@ export const fileKindMeta: Record<FileKind, { label: string; storageDirectory: s
 const imageExtensions = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg"])
 const documentExtensions = new Set(["pdf", "ppt", "pptx", "doc", "docx", "xls", "xlsx"])
 const textExtensions = new Set(["txt", "md", "json", "xml", "yaml", "yml", "sql", "log", "csv"])
-const archiveExtensions = new Set(["zip", "7z", "tar", "gz", "mp4", "webm", "mov", "mp3", "wav"])
+const archiveExtensions = new Set(["zip", "7z", "tar", "gz", "mp4", "webm", "mov", "mkv", "avi", "mp3", "wav"])
 
 const presentationExtensions = new Set(["pptx"])
 const spreadsheetExtensions = new Set(["xls", "xlsx", "csv"])
 const wordExtensions = new Set(["doc", "docx"])
-const videoExtensions = new Set(["mp4", "webm", "mov"])
+const videoExtensions = new Set(["mp4", "webm", "mov", "mkv", "avi"])
 const audioExtensions = new Set(["mp3", "wav"])
 
 export function getFileKind(file: Pick<FileRecord, "extension" | "mimeType">): FileKind {
