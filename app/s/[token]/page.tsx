@@ -24,6 +24,7 @@ import {
   DecryptedGuestCredential,
   GuestCredentialList,
 } from "./guest-credential-list"
+import { GuestFileList } from "./guest-file-list"
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
@@ -272,29 +273,19 @@ export default async function SharePage({
               </span>
             </div>
 
-            <div className="space-y-2">
-              {visibleFiles.map(file => (
-                <div
-                  key={file.id}
-                  className="flex items-center gap-3 rounded-xl border border-border/80 bg-background/80 p-3 shadow-xs transition hover:border-primary/40"
-                >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                    <FileText className="size-4.5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-foreground">{file.originalName}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">{formatFileSize(file.size)}</p>
-                  </div>
-                  <FileActions
-                    token={token}
-                    fileId={file.id}
-                    allowPreview={share.allowPreview}
-                    allowDownload={share.allowDownload}
-                    compact
-                  />
-                </div>
-              ))}
-            </div>
+            <GuestFileList
+              token={token}
+              files={visibleFiles.map(f => ({
+                id: f.id,
+                originalName: f.originalName,
+                size: f.size,
+                extension: f.extension,
+                mimeType: f.mimeType,
+                folder: f.folder,
+              }))}
+              allowPreview={share.allowPreview}
+              allowDownload={share.allowDownload}
+            />
           </section>
         ) : null}
       </div>

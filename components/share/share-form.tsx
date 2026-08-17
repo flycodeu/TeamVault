@@ -6,6 +6,7 @@ import {
   Dices,
   ExternalLink,
   FileText,
+  Folder,
   Globe2,
   KeyRound,
   RefreshCw,
@@ -13,7 +14,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
@@ -53,13 +54,24 @@ export function ShareForm({
 }: {
   resourceId: string
   resourceName: string
-  files: Array<{ id: string; name: string }>
+  files: Array<{ id: string; name: string; folder?: string | null }>
   credentials?: Array<{ id: string; name: string; type: string; username: string | null }>
   activeShares?: ActiveShareItem[]
 }) {
   const router = useRouter()
   const [shareTarget, setShareTarget] = useState<"package" | "file">("package")
   const [selectedFileId, setSelectedFileId] = useState<string>(files[0]?.id ?? "")
+
+  const filesByFolder = useMemo(() => {
+    const map = new Map<string, typeof files>()
+    for (const f of files) {
+      const folderKey = f.folder && f.folder !== "" && f.folder !== "/" ? f.folder : "/"
+      const list = map.get(folderKey) ?? []
+      list.push(f)
+      map.set(folderKey, list)
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => (a === "/" ? -1 : b === "/" ? 1 : a.localeCompare(b)))
+  }, [files])
 
   // Handover package options
   const [includeCredentials, setIncludeCredentials] = useState(true)
@@ -272,11 +284,14 @@ export function ShareForm({
               onChange={e => setSelectedFileId(e.target.value)}
               className="h-9 w-full rounded-lg border border-input bg-background px-3 text-xs shadow-xs"
             >
-              {files.map(file => (
-                <option key={file.id} value={file.id}>
-                  {file.name}
-                </option>
-              ))}
+              {files.map(file => {
+                const folderPrefix = file.folder && file.folder !== "/" ? `[${file.folder.replace(/^\//, "")}] ` : ""
+                return (
+                  <option key={file.id} value={file.id}>
+                    {folderPrefix + file.name}
+                  </option>
+                )
+              })}
             </select>
           </div>
         ) : (
@@ -329,11 +344,9 @@ export function ShareForm({
                             />
                             <span className="truncate">{c.name}</span>
                           </div>
-                          {c.username ? (
-                            <span className="font-mono text-[11px] text-muted-foreground truncate max-w-36">
-                              {c.username}
-                            </span>
-                          ) : null}
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {c.username ?? c.type}
+                          </span>
                         </label>
                       )
                     })}
@@ -346,9 +359,9 @@ export function ShareForm({
               ) : null}
             </div>
 
-            {/* Include Files Picker */}
+            {/* Include Files Picker with Folder Categorization */}
             {files.length ? (
-              <div className="space-y-2 pt-2 border-t border-border/50">
+              <div className="space-y-3 pt-2 border-t border-border/50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                     <FileText className="size-3.5 text-blue-600 dark:text-blue-400" />
@@ -365,29 +378,70 @@ export function ShareForm({
                   ) : null}
                 </div>
 
-                <div className="grid gap-1.5 max-h-36 overflow-y-auto pr-1">
-                  {files.map(f => {
-                    const checked = selectedFileIds.includes(f.id)
+                <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                  {filesByFolder.map(([folderName, folderFiles]) => {
+                    const isRoot = folderName === "/"
+                    const folderLabel = isRoot ? "根目录 /" : folderName.replace(/^\//, "")
+                    const allFolderSelected = folderFiles.every(f => selectedFileIds.includes(f.id))
+
                     return (
-                      <label
-                        key={f.id}
-                        className={cn(
-                          "flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer transition",
-                          checked
-                            ? "border-primary/40 bg-accent/30 font-medium text-foreground"
-                            : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40",
-                        )}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleFile(f.id)}
-                            className="size-3 rounded border-input text-primary accent-primary"
-                          />
-                          <span className="truncate">{f.name}</span>
+                      <div key={folderName} className="rounded-lg border border-border/60 bg-muted/20 p-2.5 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                            <Folder className="size-3.5 text-primary" />
+                            <span>{folderLabel}</span>
+                            <span className="text-[10px] text-muted-foreground font-normal">
+                              ({folderFiles.length})
+                            </span>
+                          </div>
+                          {folderFiles.length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const folderIds = folderFiles.map(f => f.id)
+                                if (allFolderSelected) {
+                                  setSelectedFileIds(prev => prev.filter(id => !folderIds.includes(id)))
+                                } else {
+                                  setSelectedFileIds(prev => Array.from(new Set([...prev, ...folderIds])))
+                                }
+                              }}
+                              className="text-[10px] text-primary hover:underline font-medium"
+                            >
+                              {allFolderSelected ? "取消该组" : "全选该组"}
+                            </button>
+                          ) : null}
                         </div>
-                      </label>
+
+                        <div className="grid gap-1">
+                          {folderFiles.map(f => {
+                            const checked = selectedFileIds.includes(f.id)
+                            return (
+                              <label
+                                key={f.id}
+                                className={cn(
+                                  "flex items-center justify-between rounded-md border px-2 py-1 text-xs cursor-pointer transition",
+                                  checked
+                                    ? "border-primary/40 bg-accent/40 font-medium text-foreground"
+                                    : "border-border/40 bg-background text-muted-foreground hover:bg-muted/30",
+                                )}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleFile(f.id)}
+                                    className="size-3 rounded border-input text-primary accent-primary"
+                                  />
+                                  <span className="truncate">{f.name}</span>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {folderLabel}
+                                </span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
                     )
                   })}
                 </div>

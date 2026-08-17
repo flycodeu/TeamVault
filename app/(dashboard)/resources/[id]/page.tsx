@@ -302,7 +302,7 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
               <ShareForm
                 resourceId={id}
                 resourceName={resource.name}
-                files={resourceFiles.map(file => ({ id: file.id, name: file.originalName }))}
+                files={resourceFiles.map(file => ({ id: file.id, name: file.originalName, folder: file.folder }))}
                 credentials={visibleCredentials.map(cred => ({
                   id: cred.id,
                   name: cred.name,
