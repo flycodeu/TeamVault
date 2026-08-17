@@ -37,7 +37,10 @@ COPY --from=builder --chown=teamvault:teamvault /app/.next/standalone ./
 COPY --from=builder --chown=teamvault:teamvault /app/.next/static ./.next/static
 COPY --from=builder --chown=teamvault:teamvault /app/public ./public
 COPY --from=builder --chown=teamvault:teamvault /app/drizzle ./drizzle
-COPY --from=dependencies --chown=teamvault:teamvault /app/node_modules ./migration-node_modules
+# docker-migrate.mjs / docker-bootstrap.mjs 以
+# /app/migration-node_modules/package.json 为 createRequire 基准；Node 会从其下方的
+# node_modules 目录解析迁移依赖，因此保留标准的 node_modules 层级。
+COPY --from=dependencies --chown=teamvault:teamvault /app/node_modules ./migration-node_modules/node_modules
 COPY --from=builder --chown=teamvault:teamvault /app/scripts ./scripts
 COPY --from=builder --chown=teamvault:teamvault /app/lib ./lib
 COPY --from=builder --chown=teamvault:teamvault /app/tsconfig.json ./tsconfig.json
