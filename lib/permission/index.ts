@@ -20,7 +20,6 @@ export async function canResource(resourceId: string, permission: ResourcePermis
 
   if (resource.visibility === "TEAM" || resource.visibility === "PUBLIC") {
     if (permission === "VIEW") return true
-    if (isWebsite && permission === "EDIT") return true
   }
 
   const direct = await db.query.resourcePermissions.findFirst({
@@ -30,16 +29,16 @@ export async function canResource(resourceId: string, permission: ResourcePermis
       eq(resourcePermissions.subjectId, user.id),
     ),
   })
-  if (direct && permissionFlag(direct, permission)) return true
+  
+  if (direct) {
+    return permissionFlag(direct, permission)
+  }
 
   const memberships = await db
     .select({ groupId: groupMembers.groupId })
     .from(groupMembers)
     .where(eq(groupMembers.userId, user.id))
   for (const membership of memberships) {
-    if (resource.visibility === "GROUP" && isWebsite && (permission === "VIEW" || permission === "EDIT")) {
-      return true
-    }
     const group = await db.query.resourcePermissions.findFirst({
       where: and(
         eq(resourcePermissions.resourceId, resourceId),
@@ -84,9 +83,6 @@ export async function canViewCredential(credentialId: string) {
   const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
 
   if (credential.accessMode === "RESOURCE") {
-    if (isWebsite && (resource.visibility === "TEAM" || resource.visibility === "PUBLIC")) {
-      return true
-    }
     return canViewSecret(credential.resourceId)
   }
 
@@ -185,21 +181,24 @@ export async function listPermittedResourceIds(permission: ResourcePermission) {
     const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
 
     if (resource.visibility === "TEAM" || resource.visibility === "PUBLIC") {
-      if (permission === "VIEW" || (isWebsite && permission === "EDIT")) {
+      if (permission === "VIEW") {
         allowedResourceIds.add(resource.id)
         continue
       }
     }
 
-    if (resource.visibility === "GROUP" && isWebsite && (permission === "VIEW" || permission === "EDIT") && groupIds.length > 0) {
-      allowedResourceIds.add(resource.id)
-      continue
-    }
-
     const resourceGrants = grantMap.get(resource.id) || []
-    const hasGrant = resourceGrants.some(g => permissionFlag(g, permission))
-    if (hasGrant) {
-      allowedResourceIds.add(resource.id)
+    const directGrant = resourceGrants.find(g => g.subjectType === "USER")
+
+    if (directGrant) {
+      if (permissionFlag(directGrant, permission)) {
+        allowedResourceIds.add(resource.id)
+      }
+    } else {
+      const hasGroupGrant = resourceGrants.some(g => g.subjectType === "GROUP" && permissionFlag(g, permission))
+      if (hasGroupGrant) {
+        allowedResourceIds.add(resource.id)
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import { requireAdminUser } from "@/lib/auth/guards"
 import { db } from "@/lib/db"
 import { auditLogs, users } from "@/lib/db/schema"
 import { cn } from "@/lib/utils"
+import { AuditCleanup } from "@/components/audit/audit-cleanup"
 
 const pageSize = 20
 
@@ -58,6 +59,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
             {total} 条记录
           </span>
         </div>
+        <AuditCleanup />
       </header>
 
       {rows.length ? (

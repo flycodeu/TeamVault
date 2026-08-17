@@ -133,6 +133,11 @@ export function EnvironmentCredentialSection({
                   <a href={env.url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:underline">
                     {env.url}
                   </a>
+                  {env.description ? (
+                    <p className="text-[11px] text-muted-foreground/80 mt-1 whitespace-pre-wrap max-w-2xl leading-relaxed">
+                      {env.description}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               {mayEdit && (

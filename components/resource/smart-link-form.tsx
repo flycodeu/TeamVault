@@ -90,6 +90,16 @@ export function SmartLinkForm({
       </div>
 
       <div className="space-y-1.5 sm:col-span-2">
+        <Label className="text-xs font-semibold">内容备注 (非必填)</Label>
+        <textarea
+          name="description"
+          defaultValue={link?.description ?? ""}
+          placeholder="该地址的具体用途，如：测试服内网穿透地址、账号需要发票申请..."
+          className="flex min-h-[60px] w-full rounded-xl border border-input bg-card px-3 py-2 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1"
+        />
+      </div>
+
+      <div className="space-y-1.5 sm:col-span-2">
         <Label className="text-xs font-semibold">可见范围控制</Label>
         <select
           value={accessMode}

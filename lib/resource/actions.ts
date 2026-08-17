@@ -449,3 +449,31 @@ export async function restoreResource(id: string): Promise<ActionResult> {
   revalidatePath("/favorites")
   return { success: true, data: undefined }
 }
+
+export async function updateResourceVisibility(resourceId: string, visibility: "TEAM" | "GROUP" | "PRIVATE" | "PUBLIC"): Promise<ActionResult<void>> {
+  const user = await getCurrentUser()
+  if (!user || !(await canEditResource(resourceId))) {
+    return { success: false, error: "无权执行此操作" }
+  }
+
+  try {
+    db.update(resources)
+      .set({ visibility, updatedAt: new Date() })
+      .where(eq(resources.id, resourceId))
+      .run()
+    
+    await writeAudit({
+      userId: user.id,
+      action: "PERMISSION_CHANGE",
+      resourceId,
+      targetType: "RESOURCE_VISIBILITY",
+      targetId: visibility,
+    })
+
+    revalidatePath(`/resources/${resourceId}`)
+    return { success: true, data: undefined }
+  } catch (error) {
+    console.error("Failed to update visibility", error)
+    return { success: false, error: "更新基础可见性失败" }
+  }
+}

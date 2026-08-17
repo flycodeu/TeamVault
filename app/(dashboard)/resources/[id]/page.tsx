@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
+import Markdown from "react-markdown"
 
 import { EnvironmentCredentialSection } from "@/components/resource/environment-credential-section"
 import { FileList } from "@/components/file/file-list"
@@ -146,9 +147,15 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
               </Button>
             ) : null}
           </div>
-          <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
-            {resource.description || "暂无描述"}
-          </p>
+          {resource.description ? (
+            <div className="prose prose-sm prose-slate dark:prose-invert max-w-none text-xs text-muted-foreground leading-relaxed break-words">
+              <Markdown>{resource.description}</Markdown>
+            </div>
+          ) : (
+            <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
+              暂无描述
+            </p>
+          )}
           {isWebsite && resource.url ? (
             <div className="rounded-xl border border-border/80 bg-accent/20 p-3.5 flex items-center justify-between">
               <div className="min-w-0 pr-3">
@@ -239,6 +246,7 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
             <div className="rounded-xl border border-border/80 bg-background/60 p-1">
               <PermissionEditor
                 resourceId={id}
+                visibility={resource.visibility}
                 subjects={subjects}
                 initial={grants.map(grant => ({
                   subjectType: grant.subjectType,
@@ -264,14 +272,11 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
       label: "对外分享",
       content: (
         <section className="rounded-xl border border-border/80 bg-card p-5 shadow-xs md:p-6">
-          <div className="max-w-3xl space-y-4">
+          <div className="space-y-4 w-full">
             <h3 className="text-sm font-bold tracking-wider text-foreground flex items-center gap-2">
               <ExternalLink className="size-4 text-primary" />
               外部协作交付包与分享
             </h3>
-            <p className="text-xs text-muted-foreground">
-              生成包含加密访问码的临时链接，将该资源打包分享给外部承包商或临时协作者，不影响内部组织架构。
-            </p>
             <div className="rounded-xl border border-border/80 bg-background/60 p-5 space-y-3">
               <ShareForm
                 resourceId={id}

@@ -26,38 +26,6 @@ import type { Resource } from "@/lib/db/schema"
 import { createResource, updateResource } from "@/lib/resource/actions"
 import { cn } from "@/lib/utils"
 
-const visibilityOptions: Array<{
-  value: Resource["visibility"]
-  label: string
-  desc: string
-  icon: typeof Users
-}> = [
-  {
-    value: "TEAM",
-    label: "团队可见",
-    desc: "小组内所有已授权成员可自由查看与使用",
-    icon: Users,
-  },
-  {
-    value: "GROUP",
-    label: "指定群组",
-    desc: "仅限授权的成员或专属群组可访问",
-    icon: ShieldAlert,
-  },
-  {
-    value: "PRIVATE",
-    label: "私有专属",
-    desc: "仅创建者本人与系统超级管理员可见",
-    icon: Lock,
-  },
-  {
-    value: "PUBLIC",
-    label: "全员公开",
-    desc: "系统内所有登录人员均可查阅",
-    icon: Globe2,
-  },
-]
-
 const sensitivityOptions: Array<{
   value: Resource["sensitivity"]
   label: string
@@ -136,9 +104,6 @@ export function ResourceForm({
   const [selectedKind, setSelectedKind] = useState<Resource["moduleKind"]>(
     resource?.moduleKind ?? (isWebsite ? "WEBSITE" : "PROJECT"),
   )
-  const [selectedVisibility, setSelectedVisibility] = useState<Resource["visibility"]>(
-    resource?.visibility ?? "TEAM",
-  )
   const [websiteUrl, setWebsiteUrl] = useState(resource?.url ?? "")
 
   async function submit(formData: FormData) {
@@ -146,11 +111,11 @@ export function ResourceForm({
     setError("")
     const input = {
       name: String(formData.get("name") ?? "").trim(),
-      category: isWebsite ? "" : String(formData.get("category") ?? "").trim(),
+      category: resource?.category ?? "",
       moduleKind: isWebsite ? ("WEBSITE" as const) : selectedKind,
       url: isWebsite ? websiteUrl.trim() : String(formData.get("url") ?? "").trim(),
       description: String(formData.get("description") ?? "").trim(),
-      visibility: selectedVisibility,
+      visibility: resource?.visibility ?? "PRIVATE",
       sensitivity: String(formData.get("sensitivity") ?? "NORMAL") as Resource["sensitivity"],
       tags: tags
         .split(/[,，]/)
@@ -335,59 +300,8 @@ export function ResourceForm({
           <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-5">
             <div className="flex items-center gap-2 border-b border-border/60 pb-3.5">
               <Shield className="size-4 text-primary" />
-              <h2 className="text-sm font-bold tracking-tight text-foreground">权限与分类设置</h2>
+              <h2 className="text-sm font-bold tracking-tight text-foreground">权限与安全设置</h2>
             </div>
-
-            {/* Visibility Mode Radio List */}
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-foreground">访问可见范围</Label>
-              <div className="grid grid-cols-1 gap-1.5">
-                  {visibilityOptions.map(option => {
-                    const Icon = option.icon
-                    const active = selectedVisibility === option.value
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setSelectedVisibility(option.value)}
-                        className={cn(
-                          "flex items-center justify-between rounded-xl border p-2.5 text-left transition",
-                          active
-                            ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30"
-                            : "border-border/60 bg-background/60 text-muted-foreground hover:border-primary/40 hover:bg-accent/20",
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Icon className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
-                          <div className="min-w-0">
-                            <p className={cn("text-xs font-bold", active ? "text-foreground" : "text-foreground/80")}>
-                              {option.label}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground truncate">{option.desc}</p>
-                          </div>
-                        </div>
-                        {active ? <Check className="size-3.5 text-primary shrink-0 ml-2" /> : null}
-                      </button>
-                    )
-                  })}
-                </div>
-            </div>
-
-            {/* Category */}
-            {!isWebsite ? (
-              <div className="space-y-1.5 pt-2 border-t border-border/50">
-                <Label htmlFor="category" className="text-xs font-bold text-foreground">
-                  自定义业务分类
-                </Label>
-                <Input
-                  id="category"
-                  name="category"
-                  defaultValue={resource?.category ?? ""}
-                  placeholder="例如：核心业务、生产工具、培训资料"
-                  className="h-9 text-xs bg-background/80"
-                />
-              </div>
-            ) : null}
 
             {/* Sensitivity */}
             <div className="space-y-1.5 pt-2 border-t border-border/50">
