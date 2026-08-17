@@ -139,7 +139,7 @@ export function SpreadsheetViewer({ name, size, url }: { name: string; size: num
   const truncated = sheet.totalRows > MAX_ROWS || sheet.totalColumns > MAX_COLUMNS
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-background">
+    <div className="flex h-full w-full min-h-[500px] flex-col bg-background">
       <div className="flex h-11 shrink-0 items-center justify-between border-b bg-emerald-50/60 px-4 dark:bg-emerald-950/15">
         <div className="flex min-w-0 items-center gap-2">
           <Rows3 className="size-4 shrink-0 text-emerald-600" />

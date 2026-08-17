@@ -18,9 +18,10 @@ export function PresentationViewer({ name, size, url }: { name: string; size: nu
   const [imageUrl, setImageUrl] = useState("")
   const [fallbacks, setFallbacks] = useState(0)
   const [error, setError] = useState("")
-  const sizeError = size > MAX_PRESENTATION_BYTES
-    ? "演示文稿超过 50MB，为避免浏览器内存占用过高，请下载后查看。"
-    : ""
+  const sizeError =
+    size > MAX_PRESENTATION_BYTES
+      ? "演示文稿超过 50MB，为避免浏览器内存占用过高，请下载后查看。"
+      : ""
 
   useEffect(() => {
     let cancelled = false
@@ -99,29 +100,50 @@ export function PresentationViewer({ name, size, url }: { name: string; size: nu
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#171717]">
-      <div className="sticky top-16 z-10 flex h-12 items-center justify-between border-b border-white/10 bg-[#171717]/95 px-4 text-white backdrop-blur">
+    <div className="flex h-full w-full flex-col bg-[#171717] overflow-hidden">
+      <div className="sticky top-0 z-10 flex h-11 shrink-0 items-center justify-between border-b border-white/10 bg-[#171717]/95 px-4 text-white backdrop-blur">
         <div className="flex min-w-0 items-center gap-2 text-xs text-white/70">
           <Presentation className="size-4 shrink-0 text-orange-400" />
-          <span className="truncate">只读演示</span>
+          <span className="truncate max-w-[200px] md:max-w-md" title={name}>
+            {name}
+          </span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 hover:text-white" onClick={() => setPage(value => Math.max(0, value - 1))} disabled={page === 0} aria-label="上一页">
-            <ChevronLeft />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 text-white hover:bg-white/10 hover:text-white"
+            onClick={() => setPage(value => Math.max(0, value - 1))}
+            disabled={page === 0}
+            aria-label="上一页"
+          >
+            <ChevronLeft className="size-4" />
           </Button>
-          <span className="w-20 text-center text-xs font-medium tabular-nums">{page + 1} / {pages}</span>
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 hover:text-white" onClick={() => setPage(value => Math.min(pages - 1, value + 1))} disabled={page >= pages - 1} aria-label="下一页">
-            <ChevronRight />
+          <span className="w-16 text-center text-xs font-medium tabular-nums">{page + 1} / {pages}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 text-white hover:bg-white/10 hover:text-white"
+            onClick={() => setPage(value => Math.min(pages - 1, value + 1))}
+            disabled={page >= pages - 1}
+            aria-label="下一页"
+          >
+            <ChevronRight className="size-4" />
           </Button>
         </div>
-        <span className="hidden text-[11px] text-white/45 sm:block">浏览器安全预览</span>
+        <span className="hidden text-[11px] text-white/45 sm:block">只读 PPTX 预览</span>
       </div>
-      <div className="flex min-h-[calc(100vh-7rem)] flex-col items-center justify-center gap-3 p-4 md:p-8">
+
+      <div className="flex flex-1 items-center justify-center overflow-auto p-4 md:p-8">
         {/* SVG 以图片资源加载，避免用户文档中的标记进入页面 DOM。 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageUrl} alt={`${name} 第 ${page + 1} 页`} className="max-h-[calc(100vh-10rem)] max-w-full bg-white shadow-2xl" />
+        <img
+          src={imageUrl}
+          alt={`${name} 第 ${page + 1} 页`}
+          className="max-h-full max-w-full bg-white shadow-2xl rounded-xs object-contain"
+        />
         {fallbacks ? (
-          <p className="rounded-full bg-amber-400/10 px-3 py-1 text-[11px] text-amber-200">
+          <p className="absolute bottom-4 rounded-full bg-amber-400/10 px-3 py-1 text-[11px] text-amber-200">
             本页有 {fallbacks} 个复杂元素使用安全占位显示
           </p>
         ) : null}

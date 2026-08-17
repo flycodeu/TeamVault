@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronLeft, ChevronRight, FileWarning, LoaderCircle, Minus, Plus } from "lucide-react"
+import { ChevronLeft, ChevronRight, FileWarning, LoaderCircle, Minus, Plus, RotateCcw } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist"
 
@@ -112,28 +112,76 @@ export function PdfViewer({ url }: { url: string }) {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-zinc-200/70 dark:bg-zinc-950">
-      <div className="sticky top-16 z-10 flex h-12 items-center justify-center gap-1 border-b bg-background/95 px-3 backdrop-blur">
-        <Button variant="ghost" size="icon" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1} aria-label="上一页">
-          <ChevronLeft />
+    <div className="flex h-full w-full flex-col bg-zinc-200/70 dark:bg-zinc-950 overflow-hidden">
+      {/* Controls toolbar */}
+      <div className="sticky top-0 z-10 flex h-11 shrink-0 items-center justify-center gap-1 border-b border-border/80 bg-background/95 px-3 backdrop-blur-md">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          onClick={() => setPage(value => Math.max(1, value - 1))}
+          disabled={page <= 1}
+          aria-label="上一页"
+        >
+          <ChevronLeft className="size-4" />
         </Button>
-        <span className="w-20 text-center text-xs font-medium tabular-nums">{page} / {pages}</span>
-        <Button variant="ghost" size="icon" onClick={() => setPage(value => Math.min(pages, value + 1))} disabled={page >= pages} aria-label="下一页">
-          <ChevronRight />
+        <span className="w-20 text-center text-xs font-medium tabular-nums text-foreground">
+          {page} / {pages}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          onClick={() => setPage(value => Math.min(pages, value + 1))}
+          disabled={page >= pages}
+          aria-label="下一页"
+        >
+          <ChevronRight className="size-4" />
         </Button>
-        <span className="mx-2 h-5 border-l" />
-        <Button variant="ghost" size="icon" onClick={() => setScale(value => Math.max(0.6, value - 0.15))} aria-label="缩小">
-          <Minus />
+
+        <span className="mx-2 h-4 border-l border-border/60" />
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          onClick={() => setScale(value => Math.max(0.5, Number((value - 0.15).toFixed(2))))}
+          aria-label="缩小"
+        >
+          <Minus className="size-3.5" />
         </Button>
-        <span className="w-12 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
-        <Button variant="ghost" size="icon" onClick={() => setScale(value => Math.min(2.4, value + 0.15))} aria-label="放大">
-          <Plus />
+        <button
+          type="button"
+          onClick={() => setScale(1.0)}
+          className="w-12 text-center text-xs font-mono font-semibold tabular-nums text-foreground hover:text-primary transition"
+          title="重置为 100%"
+        >
+          {Math.round(scale * 100)}%
+        </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          onClick={() => setScale(value => Math.min(2.5, Number((value + 0.15).toFixed(2))))}
+          aria-label="放大"
+        >
+          <Plus className="size-3.5" />
         </Button>
       </div>
-      <div className="relative flex min-h-[70vh] justify-center overflow-auto p-4 md:p-8">
-        {loading ? <LoaderCircle className="fixed top-32 size-5 animate-spin text-muted-foreground" /> : null}
-        <canvas ref={canvasRef} className="h-max max-w-none bg-white shadow-xl" />
-        {error ? <p className="absolute top-10 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p> : null}
+
+      {/* Canvas container with centered smooth scroll */}
+      <div className="relative flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start">
+        {loading ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/30 backdrop-blur-xs z-10">
+            <LoaderCircle className="size-7 animate-spin text-primary" />
+          </div>
+        ) : null}
+        <canvas ref={canvasRef} className="h-max max-w-full bg-white shadow-xl rounded-xs" />
+        {error ? (
+          <p className="absolute top-10 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive border border-destructive/20">
+            {error}
+          </p>
+        ) : null}
       </div>
     </div>
   )

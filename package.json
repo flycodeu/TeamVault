@@ -12,7 +12,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
     "db:bootstrap": "tsx --env-file=.env scripts/bootstrap-admin.ts",
-    "backup": "tsx scripts/backup.ts"
+    "backup": "tsx scripts/backup.ts",
+    "export": "tsx scripts/export-backup.ts",
+    "import": "tsx scripts/import-backup.ts"
   },
   "dependencies": {
     "@office-kit/pptx": "^0.12.0",

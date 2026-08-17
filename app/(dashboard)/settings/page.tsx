@@ -8,11 +8,15 @@ import {
   ShieldCheck,
 } from "lucide-react"
 
+import { SystemMigrationPanel } from "@/components/settings/system-migration-panel"
 import { requireAdminUser } from "@/lib/auth/guards"
 import { databasePath } from "@/lib/db"
+import { getSystemStorageStats } from "@/lib/system/backup"
 
 export default async function SettingsPage() {
   await requireAdminUser()
+
+  const stats = await getSystemStorageStats()
 
   const systemCards = [
     {
@@ -60,43 +64,58 @@ export default async function SettingsPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8 space-y-6">
+    <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8 space-y-8">
+      {/* Header */}
       <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">系统设置与环境</h1>
-        <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">系统设置与迁移</h1>
+        <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary border border-primary/20">
           管理员专享
         </span>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {systemCards.map(item => {
-          const Icon = item.icon
-          return (
-            <div
-              key={item.title}
-              className="flex flex-col justify-between rounded-xl border border-border/80 bg-card p-5 shadow-xs transition duration-200 hover:border-primary/40 hover:shadow-xs"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-                    <Icon className="size-5" />
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="size-3.5" />
-                    {item.status}
-                  </span>
+      {/* Migration & Backup Section */}
+      <section className="space-y-4">
+        <div className="border-b border-border/80 pb-3">
+          <h2 className="text-base font-bold text-foreground">全量数据导出与跨机迁移</h2>
+        </div>
+        <SystemMigrationPanel initialStats={stats} />
+      </section>
+
+      {/* System Environment Information Section */}
+      <section className="space-y-4 pt-2">
+        <div className="border-b border-border/80 pb-3">
+          <h2 className="text-base font-bold text-foreground">系统环境与运行状态</h2>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {systemCards.map(item => {
+            const Icon = item.icon
+            return (
+              <div
+                key={item.title}
+                className="flex flex-col justify-between rounded-xl border border-border/80 bg-card p-5 shadow-xs transition duration-200 hover:border-primary/40 hover:shadow-xs"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+                      <Icon className="size-5" />
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="size-3.5" />
+                      {item.status}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 text-sm font-bold text-foreground">{item.title}</h3>
+                  <p className="mt-1.5 font-mono text-xs text-primary font-semibold break-all bg-muted/50 rounded p-1.5">
+                    {item.value}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.desc}</p>
                 </div>
-                <h3 className="mt-4 text-sm font-bold text-foreground">{item.title}</h3>
-                <p className="mt-1.5 font-mono text-xs text-primary font-semibold break-all bg-muted/50 rounded p-1.5">
-                  {item.value}
-                </p>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.desc}</p>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      </section>
     </div>
   )
 }
-
