@@ -186,6 +186,7 @@ export const files = sqliteTable(
   {
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     resourceId: text("resource_id").notNull().references(() => resources.id, { onDelete: "cascade" }),
+    folder: text("folder").notNull().default("/"),
     originalName: text("original_name").notNull(),
     storageName: text("storage_name").notNull().unique(),
     storagePath: text("storage_path").notNull(),
@@ -199,7 +200,7 @@ export const files = sqliteTable(
     createdBy: text("created_by").notNull().references(() => users.id),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
   },
-  (table) => [index("file_resource_idx").on(table.resourceId)],
+  (table) => [index("file_resource_idx").on(table.resourceId), index("file_resource_folder_idx").on(table.resourceId, table.folder)],
 )
 
 export const groups = sqliteTable("group", {

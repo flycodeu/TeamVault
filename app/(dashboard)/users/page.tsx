@@ -2,6 +2,8 @@ import { and, count, desc, eq, inArray } from "drizzle-orm"
 import { ArrowRight, ShieldCheck, UserRoundPlus } from "lucide-react"
 import Link from "next/link"
 
+import { UserDeleteButton } from "@/components/admin/user-delete-button"
+import { UserEditDialog } from "@/components/admin/user-edit-dialog"
 import { UserForm } from "@/components/admin/user-form"
 import { UserStatusButton } from "@/components/admin/user-status-button"
 import { Button } from "@/components/ui/button"
@@ -58,14 +60,14 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
 
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="overflow-hidden rounded-lg border bg-card">
-          <div className="hidden grid-cols-[minmax(220px,1.2fr)_minmax(180px,1fr)_120px_90px_72px] gap-4 border-b bg-muted/40 px-4 py-3 text-xs font-medium text-muted-foreground md:grid">
-            <span>成员</span><span>所属小组</span><span>直接授权</span><span>状态</span><span />
+          <div className="hidden grid-cols-[minmax(180px,1.2fr)_minmax(160px,1fr)_110px_80px_200px] gap-4 border-b bg-muted/40 px-4 py-3 text-xs font-medium text-muted-foreground md:grid">
+            <span>成员</span><span>所属小组</span><span>直接授权</span><span>状态</span><span className="text-right pr-2">操作</span>
           </div>
           {rows.map(user => {
             const userGroups = groupsByUser.get(user.id) ?? []
             const directResourceCount = resourceIdsByUser.get(user.id)?.size ?? 0
             return (
-              <article key={user.id} className="grid gap-4 border-b px-4 py-4 last:border-b-0 md:grid-cols-[minmax(220px,1.2fr)_minmax(180px,1fr)_120px_90px_72px] md:items-center">
+              <article key={user.id} className="grid gap-4 border-b px-4 py-4 last:border-b-0 md:grid-cols-[minmax(180px,1.2fr)_minmax(160px,1fr)_110px_80px_200px] md:items-center">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">{user.displayName.slice(0, 2)}</span>
                   <div className="min-w-0">
@@ -81,7 +83,11 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                 </div>
                 <p className="text-xs text-muted-foreground">{user.isAdmin ? "全部内容" : `${directResourceCount} 个直接授权`}</p>
                 <span className={user.status === "ACTIVE" ? "w-fit rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300" : "w-fit rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"}>{user.status === "ACTIVE" ? "正常" : "已禁用"}</span>
-                <UserStatusButton userId={user.id} active={user.status === "ACTIVE"} disabled={currentUser.id === user.id} />
+                <div className="flex items-center justify-end gap-1">
+                  <UserEditDialog user={{ id: user.id, username: user.username, displayName: user.displayName, isAdmin: user.isAdmin }} />
+                  <UserStatusButton userId={user.id} active={user.status === "ACTIVE"} disabled={currentUser.id === user.id} />
+                  <UserDeleteButton userId={user.id} userName={user.displayName} disabled={currentUser.id === user.id} />
+                </div>
               </article>
             )
           })}

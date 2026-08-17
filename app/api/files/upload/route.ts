@@ -16,6 +16,8 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ success: false, error: "未登录" }, { status: 401 })
   const form = await request.formData()
   const resourceId = String(form.get("resourceId") ?? "")
+  const rawFolder = String(form.get("folder") ?? "/").trim()
+  const folder = rawFolder && rawFolder !== "" ? (rawFolder.startsWith("/") ? rawFolder : `/${rawFolder}`) : "/"
   const file = form.get("file")
   if (!(file instanceof File)) return NextResponse.json({ success: false, error: "缺少文件" }, { status: 400 })
   const resource = await db.query.resources.findFirst({ where: and(eq(resources.id, resourceId), isNull(resources.deletedAt)) })
@@ -23,7 +25,7 @@ export async function POST(request: Request) {
   try {
     const extension = validateUpload(file)
     const saved = await persistUpload(file, extension)
-    const [record] = await db.insert(files).values({ resourceId, originalName: file.name.slice(0, 255), ...saved, mimeType: normalizeUploadMimeType(file.type, extension), extension, createdBy: user.id }).returning({ id: files.id })
+    const [record] = await db.insert(files).values({ resourceId, folder, originalName: file.name.slice(0, 255), ...saved, mimeType: normalizeUploadMimeType(file.type, extension), extension, createdBy: user.id }).returning({ id: files.id })
     await writeAudit({ userId: user.id, action: "FILE_UPLOAD", resourceId, targetType: "FILE", targetId: record.id })
     return NextResponse.json({ success: true, data: record }, { status: 201 })
   } catch (error) {

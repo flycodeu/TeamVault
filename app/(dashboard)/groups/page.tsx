@@ -2,6 +2,8 @@ import { and, eq, isNull } from "drizzle-orm"
 import { FolderLock, Plus, UsersRound } from "lucide-react"
 import Link from "next/link"
 
+import { GroupDeleteButton } from "@/components/admin/group-delete-button"
+import { GroupEditDialog } from "@/components/admin/group-edit-dialog"
 import { GroupForm } from "@/components/admin/group-form"
 import { GroupResourceEditor } from "@/components/admin/group-resource-editor"
 import { MemberEditor } from "@/components/admin/member-editor"
@@ -58,14 +60,18 @@ export default async function GroupsPage({ searchParams }: { searchParams: Promi
 
         {selectedGroup ? (
           <section className="min-w-0 overflow-hidden rounded-lg border bg-card">
-            <header className="flex flex-col justify-between gap-4 border-b px-5 py-5 sm:flex-row sm:items-start">
+            <header className="flex flex-col justify-between gap-4 border-b px-5 py-5 sm:flex-row sm:items-center">
               <div>
                 <h2 className="text-lg font-semibold">{selectedGroup.name}</h2>
                 {selectedGroup.description ? <p className="mt-1 text-sm text-muted-foreground">{selectedGroup.description}</p> : null}
               </div>
-              <div className="flex gap-2 text-xs">
-                <span className="rounded-full bg-muted px-2.5 py-1">{selectedMembers.length} 位成员</span>
-                <span className="rounded-full bg-muted px-2.5 py-1">{selectedGrants.length} 项内容</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-muted px-2.5 py-1 text-xs">{selectedMembers.length} 位成员</span>
+                <span className="rounded-full bg-muted px-2.5 py-1 text-xs">{selectedGrants.length} 项内容</span>
+                <div className="flex items-center gap-1.5 ml-2 border-l pl-3">
+                  <GroupEditDialog group={{ id: selectedGroup.id, name: selectedGroup.name, description: selectedGroup.description }} />
+                  <GroupDeleteButton groupId={selectedGroup.id} groupName={selectedGroup.name} />
+                </div>
               </div>
             </header>
             <div className="grid divide-y xl:grid-cols-2 xl:divide-x xl:divide-y-0">

@@ -1,4 +1,4 @@
-CREATE TABLE `memo` (
+CREATE TABLE IF NOT EXISTS `memo` (
 	`id` text PRIMARY KEY NOT NULL,
 	`content` text NOT NULL,
 	`color` text DEFAULT 'bg-card' NOT NULL,

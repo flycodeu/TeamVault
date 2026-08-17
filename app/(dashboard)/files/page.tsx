@@ -166,7 +166,7 @@ export default async function FilesPage({
                     <Link href={`/resources/${group.resourceId}`}>进入模块</Link>
                   </Button>
                 </div>
-                <FileList files={group.files} />
+                <FileList files={group.files} resourceId={group.resourceId} />
               </section>
             ))}
           </div>

@@ -1,4 +1,4 @@
-CREATE TABLE `resource_link_permission` (
+CREATE TABLE IF NOT EXISTS `resource_link_permission` (
 	`id` text PRIMARY KEY NOT NULL,
 	`link_id` text NOT NULL,
 	`subject_type` text NOT NULL,

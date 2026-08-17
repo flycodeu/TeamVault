@@ -239,14 +239,10 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
       id: "files",
       label: isWebsite ? "配套手册/文档" : "文件资料",
       count: resourceFiles.length,
-      description: "图片直接展示缩略图，文档与其他文件按类型归类。",
+      description: "支持创建分类文件夹、批量移动、按目录浏览与批量导出打包。",
       content: (
         <section className="rounded-xl border border-border/80 bg-card p-5 shadow-xs md:p-6 space-y-4">
-          <div className="flex items-center justify-between gap-4 border-b pb-3.5">
-            <h3 className="text-sm font-bold text-foreground">文件资料库</h3>
-            {mayEdit ? <FileUploader resourceId={id} /> : null}
-          </div>
-          <FileList files={resourceFiles} mayEdit={mayEdit} />
+          <FileList files={resourceFiles} resourceId={id} mayEdit={mayEdit} />
         </section>
       ),
     })
