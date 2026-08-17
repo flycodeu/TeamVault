@@ -57,7 +57,7 @@ graph TD
 
 ```bash
 # 1. 克隆代码仓库到指定目录（如 /opt/teamvault）
-git clone <your-github-repo-url> /opt/teamvault
+git clone https://github.com/flycodeu/TeamVault.git /opt/teamvault
 cd /opt/teamvault
 
 # 2. 配置环境变量
