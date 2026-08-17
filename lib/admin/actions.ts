@@ -23,17 +23,18 @@ import {
 import { z } from "zod"
 
 const userSchema = bootstrapAdminSchema.extend({ isAdmin: z.boolean().default(false) })
-export const userEditSchema = z.object({
+const userEditSchema = z.object({
   username: z.string().trim().min(2, "用户名至少 2 个字符").max(32, "用户名最多 32 个字符"),
   displayName: z.string().trim().min(1, "请输入显示名称").max(50, "显示名称最多 50 个字符"),
   isAdmin: z.boolean().default(false),
   password: z.string().min(6, "密码至少 6 位").max(100).optional().or(z.literal("")),
 })
+export type UserEditInput = z.infer<typeof userEditSchema>
 
 const groupSchema = z.object({ name: z.string().trim().min(1).max(80), description: z.string().trim().max(500).optional() })
 const groupResourceSchema = z.object({
-  groupId: z.string().uuid(),
-  resourceId: z.string().uuid(),
+  groupId: z.string().min(1),
+  resourceId: z.string().min(1),
   level: z.enum(["VIEW", "FILES", "SECRETS", "MANAGE"]),
 })
 
@@ -261,34 +262,68 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
 }
 
 export async function setGroupResourceAccess(groupId: string, resourceId: string, level: "VIEW" | "FILES" | "SECRETS" | "MANAGE"): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { success: false, error: "仅管理员可以分配资源" }
+  const admin = await requireAdmin()
+  if (!admin) return { success: false, error: "仅管理员可以分配资源" }
   const parsed = groupResourceSchema.safeParse({ groupId, resourceId, level })
   if (!parsed.success) return { success: false, error: "资源分配信息无效" }
-  const [group, resource] = await Promise.all([
-    db.query.groups.findFirst({ where: eq(groups.id, parsed.data.groupId) }),
-    db.query.resources.findFirst({ where: eq(resources.id, parsed.data.resourceId) }),
-  ])
-  if (!group || !resource || resource.deletedAt) return { success: false, error: "小组或资源不存在" }
-  const flags = {
-    canView: true,
-    canViewFile: parsed.data.level !== "VIEW",
-    canDownload: parsed.data.level !== "VIEW",
-    canViewSecret: parsed.data.level === "SECRETS" || parsed.data.level === "MANAGE",
-    canEdit: parsed.data.level === "MANAGE",
-    canShare: parsed.data.level === "MANAGE",
+
+  try {
+    const [group, resource] = await Promise.all([
+      db.query.groups.findFirst({ where: eq(groups.id, parsed.data.groupId) }),
+      db.query.resources.findFirst({ where: eq(resources.id, parsed.data.resourceId) }),
+    ])
+    if (!group || !resource || resource.deletedAt) return { success: false, error: "小组或资源不存在" }
+    const flags = {
+      canView: true,
+      canViewFile: parsed.data.level !== "VIEW",
+      canDownload: parsed.data.level !== "VIEW",
+      canViewSecret: parsed.data.level === "SECRETS" || parsed.data.level === "MANAGE",
+      canEdit: parsed.data.level === "MANAGE",
+      canShare: parsed.data.level === "MANAGE",
+    }
+    const existing = await db.query.resourcePermissions.findFirst({
+      where: and(
+        eq(resourcePermissions.resourceId, parsed.data.resourceId),
+        eq(resourcePermissions.subjectType, "GROUP"),
+        eq(resourcePermissions.subjectId, parsed.data.groupId),
+      ),
+    })
+    if (existing) {
+      await db.update(resourcePermissions).set(flags).where(eq(resourcePermissions.id, existing.id))
+    } else {
+      await db.insert(resourcePermissions).values({
+        resourceId: parsed.data.resourceId,
+        subjectType: "GROUP",
+        subjectId: parsed.data.groupId,
+        ...flags,
+      })
+    }
+    revalidatePath("/groups")
+    revalidatePath(`/resources/${parsed.data.resourceId}`)
+    return { success: true, data: undefined }
+  } catch (error) {
+    console.error("setGroupResourceAccess failed:", error)
+    return { success: false, error: error instanceof Error ? error.message : "分配资源权限失败" }
   }
-  const existing = await db.query.resourcePermissions.findFirst({ where: and(eq(resourcePermissions.resourceId, parsed.data.resourceId), eq(resourcePermissions.subjectType, "GROUP"), eq(resourcePermissions.subjectId, parsed.data.groupId)) })
-  if (existing) await db.update(resourcePermissions).set(flags).where(eq(resourcePermissions.id, existing.id))
-  else await db.insert(resourcePermissions).values({ resourceId: parsed.data.resourceId, subjectType: "GROUP", subjectId: parsed.data.groupId, ...flags })
-  revalidatePath("/groups")
-  revalidatePath(`/resources/${parsed.data.resourceId}`)
-  return { success: true, data: undefined }
 }
 
 export async function removeGroupResourceAccess(groupId: string, resourceId: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { success: false, error: "仅管理员可以取消资源分配" }
-  await db.delete(resourcePermissions).where(and(eq(resourcePermissions.resourceId, resourceId), eq(resourcePermissions.subjectType, "GROUP"), eq(resourcePermissions.subjectId, groupId)))
-  revalidatePath("/groups")
-  revalidatePath(`/resources/${resourceId}`)
-  return { success: true, data: undefined }
+  const admin = await requireAdmin()
+  if (!admin) return { success: false, error: "仅管理员可以取消资源分配" }
+
+  try {
+    await db.delete(resourcePermissions).where(
+      and(
+        eq(resourcePermissions.resourceId, resourceId),
+        eq(resourcePermissions.subjectType, "GROUP"),
+        eq(resourcePermissions.subjectId, groupId),
+      ),
+    )
+    revalidatePath("/groups")
+    revalidatePath(`/resources/${resourceId}`)
+    return { success: true, data: undefined }
+  } catch (error) {
+    console.error("removeGroupResourceAccess failed:", error)
+    return { success: false, error: error instanceof Error ? error.message : "取消资源权限失败" }
+  }
 }

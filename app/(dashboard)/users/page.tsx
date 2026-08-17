@@ -84,7 +84,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                 <p className="text-xs text-muted-foreground">{user.isAdmin ? "全部内容" : `${directResourceCount} 个直接授权`}</p>
                 <span className={user.status === "ACTIVE" ? "w-fit rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300" : "w-fit rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"}>{user.status === "ACTIVE" ? "正常" : "已禁用"}</span>
                 <div className="flex items-center justify-end gap-1">
-                  <UserEditDialog user={{ id: user.id, username: user.username, displayName: user.displayName, isAdmin: user.isAdmin }} />
+                  <UserEditDialog user={{ id: user.id, username: user.username, displayName: user.displayName, isAdmin: user.isAdmin }} isSelf={currentUser.id === user.id} />
                   <UserStatusButton userId={user.id} active={user.status === "ACTIVE"} disabled={currentUser.id === user.id} />
                   <UserDeleteButton userId={user.id} userName={user.displayName} disabled={currentUser.id === user.id} />
                 </div>

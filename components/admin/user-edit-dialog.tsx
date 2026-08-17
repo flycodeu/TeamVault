@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { LoaderCircle, Pencil, Shield, User } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -19,6 +20,7 @@ import { updateUser } from "@/lib/admin/actions"
 
 export function UserEditDialog({
   user,
+  isSelf = false,
 }: {
   user: {
     id: string
@@ -26,7 +28,9 @@ export function UserEditDialog({
     displayName: string
     isAdmin: boolean
   }
+  isSelf?: boolean
 }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [displayName, setDisplayName] = useState(user.displayName)
   const [username, setUsername] = useState(user.username)
@@ -55,12 +59,13 @@ export function UserEditDialog({
       const res = await updateUser(user.id, {
         displayName: displayName.trim(),
         username: username.trim(),
-        isAdmin,
+        isAdmin: isSelf ? true : isAdmin,
         password: password.trim() ? password.trim() : undefined,
       })
 
       if (res.success) {
         setOpen(false)
+        router.refresh()
       } else {
         setError(res.error)
       }
@@ -150,14 +155,18 @@ export function UserEditDialog({
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={isAdmin}
+                  checked={isSelf ? true : isAdmin}
+                  disabled={isSelf}
                   onChange={e => setIsAdmin(e.target.checked)}
-                  className="mt-0.5 size-4 rounded border-border text-primary focus:ring-primary"
+                  className="mt-0.5 size-4 rounded border-border text-primary focus:ring-primary disabled:opacity-50"
                 />
                 <div>
                   <span className="text-xs font-bold text-foreground flex items-center gap-1">
                     <Shield className="size-3.5 text-primary" />
                     <span>系统管理员权限</span>
+                    {isSelf ? (
+                      <span className="text-[10px] text-muted-foreground font-normal">(当前登录账号不可撤销)</span>
+                    ) : null}
                   </span>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     管理员拥有所有资产、人员、群组与安全审计日志的全局管理权。
