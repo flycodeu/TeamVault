@@ -416,11 +416,7 @@ export async function deleteResource(id: string): Promise<ActionResult> {
   if (!user) return { success: false, error: "请先登录" }
   const resource = await db.query.resources.findFirst({ where: and(eq(resources.id, id), isNull(resources.deletedAt)) })
   if (!resource) return { success: false, error: "资源不存在" }
-  const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
-  const canDelete =
-    user.isAdmin ||
-    resource.ownerId === user.id ||
-    (isWebsite && (resource.visibility === "TEAM" || resource.visibility === "PUBLIC"))
+  const canDelete = user.isAdmin || resource.ownerId === user.id
 
   if (!canDelete) return { success: false, error: "无权删除该资源" }
   const moduleFiles = await db.select({ id: files.id }).from(files).where(eq(files.resourceId, id))

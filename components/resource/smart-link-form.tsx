@@ -14,25 +14,27 @@ export function SmartLinkForm({
   resourceId,
   link,
   subjects,
+  initialSubjects = [],
   onSuccess,
 }: {
   resourceId: string
   link?: ResourceLink
   subjects: { id: string; label: string; type: "USER" | "GROUP" }[]
+  initialSubjects?: CredentialSubjectGrant[]
   onSuccess?: () => void
 }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
-  const [accessMode, setAccessMode] = useState<"RESOURCE" | "RESTRICTED">(link?.accessMode as any ?? "RESOURCE")
-  const [selectedSubjects, setSelectedSubjects] = useState<CredentialSubjectGrant[]>([])
+  const [accessMode, setAccessMode] = useState<"RESOURCE" | "RESTRICTED">(link?.accessMode ?? "RESOURCE")
+  const [selectedSubjects, setSelectedSubjects] = useState<CredentialSubjectGrant[]>(initialSubjects)
 
   async function submit(formData: FormData) {
     setPending(true)
     setError("")
     
     const payload = {
-      kind: (formData.get("kind") as any) || "WEBSITE",
+      kind: (formData.get("kind") as "WEBSITE" | "EXTERNAL_DOCUMENT" | "OTHER") || "WEBSITE",
       title: String(formData.get("title") ?? "").trim(),
       url: String(formData.get("url") ?? "").trim(),
       description: String(formData.get("description") ?? "").trim(),
@@ -103,7 +105,7 @@ export function SmartLinkForm({
         <Label className="text-xs font-semibold">可见范围控制</Label>
         <select
           value={accessMode}
-          onChange={e => setAccessMode(e.target.value as any)}
+          onChange={e => setAccessMode(e.target.value as "RESOURCE" | "RESTRICTED")}
           className="flex h-9 w-full rounded-xl border border-input bg-card px-3 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1"
         >
           <option value="RESOURCE">继承模块权限 (全局可见)</option>

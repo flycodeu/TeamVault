@@ -56,26 +56,37 @@ export function CredentialForm({
   async function submit(formData: FormData) {
     setPending(true)
     setError("")
-    const result = await createCredential(resourceId, {
-      name: String(formData.get("name") ?? "").trim(),
-      type: (formData.get("type") as "PASSWORD") || "PASSWORD",
-      username: String(formData.get("username") ?? "").trim(),
-      secret: String(formData.get("secret") ?? "").trim(),
-      extra: String(formData.get("extra") ?? "").trim(),
-      description: String(formData.get("description") ?? "").trim(),
-      accessMode,
-      subjects: accessMode === "RESTRICTED" ? selectedSubjects : [],
-      linkId: formData.get("linkId") === "none" ? undefined : String(formData.get("linkId") ?? ""),
-    })
+    try {
+      const rawLinkId = formData.get("linkId")
+      const linkId =
+        rawLinkId && rawLinkId !== "none" && String(rawLinkId).trim() !== ""
+          ? String(rawLinkId).trim()
+          : undefined
 
-    if (!result.success) {
-      setError(result.error)
+      const result = await createCredential(resourceId, {
+        name: String(formData.get("name") ?? "").trim(),
+        type: (formData.get("type") as "PASSWORD") || "PASSWORD",
+        username: String(formData.get("username") ?? "").trim(),
+        secret: String(formData.get("secret") ?? "").trim(),
+        extra: String(formData.get("extra") ?? "").trim(),
+        description: String(formData.get("description") ?? "").trim(),
+        accessMode,
+        subjects: accessMode === "RESTRICTED" ? selectedSubjects : [],
+        linkId,
+      })
+
+      if (!result.success) {
+        setError(result.error)
+        setPending(false)
+        return
+      }
+
+      if (onDone) onDone()
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "录入失败，请稍后重试")
       setPending(false)
-      return
     }
-
-    if (onDone) onDone()
-    router.refresh()
   }
 
   return (

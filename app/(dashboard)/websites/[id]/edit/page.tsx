@@ -40,10 +40,7 @@ export default async function EditWebsitePage({
   }
 
   const mayDelete = Boolean(
-    currentUser?.isAdmin ||
-    currentUser?.id === website.ownerId ||
-    website.visibility === "TEAM" ||
-    website.visibility === "PUBLIC",
+    currentUser?.isAdmin || currentUser?.id === website.ownerId,
   )
 
   // Fetch all credentials attached to this website

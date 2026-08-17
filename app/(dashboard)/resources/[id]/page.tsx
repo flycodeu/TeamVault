@@ -12,7 +12,7 @@ import {
   Wrench,
 } from "lucide-react"
 import Link from "next/link"
-import { notFound, redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import Markdown from "react-markdown"
 
 import { EnvironmentCredentialSection } from "@/components/resource/environment-credential-section"
@@ -32,12 +32,20 @@ import {
   credentials,
   files,
   resourceFavorites,
+  resourceLinkPermissions,
   resourceLinks,
   resourcePermissions,
   resources,
   users,
 } from "@/lib/db/schema"
-import { canEditResource, canShareResource, canViewCredential, canViewFile, canViewResource } from "@/lib/permission"
+import {
+  canEditResource,
+  canShareResource,
+  canViewCredential,
+  canViewFile,
+  canViewResource,
+  canViewResourceLink,
+} from "@/lib/permission"
 import { cn } from "@/lib/utils"
 
 const kindMeta = {
@@ -76,7 +84,7 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
     canShareResource(id),
   ])
   const mayDelete = Boolean(currentUser?.isAdmin || currentUser?.id === resource.ownerId)
-  const [allCredentials, resourceFiles, moduleLinks, owner] = await Promise.all([
+  const [allCredentials, resourceFiles, allLinks, owner] = await Promise.all([
     db.query.credentials.findMany({ where: eq(credentials.resourceId, id) }),
     mayViewFiles ? db.query.files.findMany({ where: eq(files.resourceId, id) }) : [],
     db.query.resourceLinks.findMany({ where: eq(resourceLinks.resourceId, id) }),
@@ -91,9 +99,24 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
       )
         .filter(item => item.allowed)
         .map(item => item.credential)
+
+  const moduleLinks = mayEdit
+    ? allLinks
+    : (
+        await Promise.all(
+          allLinks.map(async link => ({ link, allowed: await canViewResourceLink(link.id) })),
+        )
+      )
+        .filter(item => item.allowed)
+        .map(item => item.link)
   const credentialGrants = allCredentials.length
     ? await db.query.credentialPermissions.findMany({
         where: inArray(credentialPermissions.credentialId, allCredentials.map(credential => credential.id)),
+      })
+    : []
+  const linkGrants = allLinks.length
+    ? await db.query.resourceLinkPermissions.findMany({
+        where: inArray(resourceLinkPermissions.linkId, allLinks.map(link => link.id)),
       })
     : []
   const [workspaceUsers, workspaceGroups, grants] = mayEdit
@@ -200,6 +223,11 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
             subjectType: grant.subjectType as "USER" | "GROUP",
             subjectId: grant.subjectId,
           }))}
+          linkAccessGrants={linkGrants.map(grant => ({
+            linkId: grant.linkId,
+            subjectType: grant.subjectType as "USER" | "GROUP",
+            subjectId: grant.subjectId,
+          }))}
           mayEdit={mayEdit}
         />
       ),
@@ -279,7 +307,7 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
                 resourceId={id}
                 resourceName={resource.name}
                 files={resourceFiles.map(file => ({ id: file.id, name: file.originalName }))}
-                credentials={allCredentials.map(cred => ({
+                credentials={visibleCredentials.map(cred => ({
                   id: cred.id,
                   name: cred.name,
                   type: cred.type,

@@ -16,6 +16,7 @@ export function EnvironmentCredentialSection({
   credentials,
   subjects,
   accessGrants,
+  linkAccessGrants = [],
   mayEdit,
 }: {
   resourceId: string
@@ -23,6 +24,7 @@ export function EnvironmentCredentialSection({
   credentials: Credential[]
   subjects: { id: string; label: string; type: "USER" | "GROUP" }[]
   accessGrants: { credentialId: string; subjectType: string; subjectId: string }[]
+  linkAccessGrants?: { linkId: string; subjectType: string; subjectId: string }[]
   mayEdit: boolean
 }) {
   const [openNewLink, setOpenNewLink] = useState(false)
@@ -104,7 +106,7 @@ export function EnvironmentCredentialSection({
                     credential={credential}
                     mayEdit={mayEdit}
                     subjects={subjects}
-                    accessGrants={grants as any}
+                    accessGrants={grants.map(g => ({ subjectType: g.subjectType as "USER" | "GROUP", subjectId: g.subjectId }))}
                   />
                 )
               })}
@@ -155,6 +157,12 @@ export function EnvironmentCredentialSection({
                       resourceId={resourceId}
                       link={env}
                       subjects={subjects}
+                      initialSubjects={linkAccessGrants
+                        .filter(grant => grant.linkId === env.id)
+                        .map(grant => ({
+                          subjectType: grant.subjectType as "USER" | "GROUP",
+                          subjectId: grant.subjectId,
+                        }))}
                     />
                   </DialogContent>
                 </Dialog>
@@ -171,7 +179,7 @@ export function EnvironmentCredentialSection({
                       credential={credential}
                       mayEdit={mayEdit}
                       subjects={subjects}
-                      accessGrants={grants as any}
+                      accessGrants={grants.map(g => ({ subjectType: g.subjectType as "USER" | "GROUP", subjectId: g.subjectId }))}
                     />
                   )
                 })}

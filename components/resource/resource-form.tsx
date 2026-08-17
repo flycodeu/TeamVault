@@ -9,7 +9,6 @@ import {
   Globe2,
   Lock,
   Shield,
-  ShieldAlert,
   Sparkles,
   Tag,
   UserRound,
@@ -99,6 +98,10 @@ export function ResourceForm({
       return ""
     }
   })
+  const [category, setCategory] = useState(resource?.category ?? "")
+  const [visibility, setVisibility] = useState<Resource["visibility"]>(
+    resource?.visibility ?? "PRIVATE",
+  )
 
   const isWebsite = resource ? resource.moduleKind === "WEBSITE" : mode === "WEBSITE"
   const [selectedKind, setSelectedKind] = useState<Resource["moduleKind"]>(
@@ -111,11 +114,11 @@ export function ResourceForm({
     setError("")
     const input = {
       name: String(formData.get("name") ?? "").trim(),
-      category: resource?.category ?? "",
+      category: category.trim() || undefined,
       moduleKind: isWebsite ? ("WEBSITE" as const) : selectedKind,
       url: isWebsite ? websiteUrl.trim() : String(formData.get("url") ?? "").trim(),
       description: String(formData.get("description") ?? "").trim(),
-      visibility: resource?.visibility ?? "PRIVATE",
+      visibility,
       sensitivity: String(formData.get("sensitivity") ?? "NORMAL") as Resource["sensitivity"],
       tags: tags
         .split(/[,，]/)
@@ -301,6 +304,52 @@ export function ResourceForm({
             <div className="flex items-center gap-2 border-b border-border/60 pb-3.5">
               <Shield className="size-4 text-primary" />
               <h2 className="text-sm font-bold tracking-tight text-foreground">权限与安全设置</h2>
+            </div>
+
+            {/* Category */}
+            <div className="space-y-1.5 pt-2 border-t border-border/50">
+              <Label htmlFor="category" className="text-xs font-bold text-foreground">
+                业务分类（可选）
+              </Label>
+              <Input
+                id="category"
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                placeholder="如：研发平台、运维系统、财务系统"
+                className="h-9 text-xs bg-background/80"
+              />
+            </div>
+
+            {/* Visibility */}
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <Label className="text-xs font-bold text-foreground">可见范围</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { value: "TEAM", label: "团队可见", icon: Users },
+                  { value: "GROUP", label: "按授权可见", icon: Shield },
+                  { value: "PRIVATE", label: "私有专属", icon: Lock },
+                  { value: "PUBLIC", label: "全员公开", icon: Globe2 },
+                ].map(option => {
+                  const Icon = option.icon
+                  const active = visibility === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setVisibility(option.value as Resource["visibility"])}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-left transition",
+                        active
+                          ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30"
+                          : "border-border/60 bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                      )}
+                    >
+                      <Icon className={cn("size-3.5 shrink-0", active ? "text-primary" : "text-muted-foreground/70")} />
+                      <span className="text-[11px] font-semibold">{option.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             {/* Sensitivity */}

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth/session"
 import { db } from "@/lib/db"
 import { files, resources } from "@/lib/db/schema"
+import { writeAudit } from "@/lib/audit/log"
 import { normalizeUploadMimeType } from "@/lib/file/kinds"
 import { persistUpload, validateUpload } from "@/lib/storage/files"
 import { canEditResource } from "@/lib/permission"
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
     const saved = await persistUpload(file, extension)
     const [record] = await db.insert(files).values({ resourceId, originalName: file.name.slice(0, 255), ...saved, mimeType: normalizeUploadMimeType(file.type, extension), extension, createdBy: user.id }).returning({ id: files.id })
     await enqueuePreview(record.id, extension)
+    await writeAudit({ userId: user.id, action: "FILE_UPLOAD", resourceId, targetType: "FILE", targetId: record.id })
     return NextResponse.json({ success: true, data: record }, { status: 201 })
   } catch (error) {
     return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "上传失败" }, { status: 400 })

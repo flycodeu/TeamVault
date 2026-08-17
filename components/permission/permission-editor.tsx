@@ -29,6 +29,13 @@ const keys = [
   { key: "canShare", label: "共享管理", desc: "生成分享链接" },
 ] as const
 
+const visibilityOptions = [
+  { value: "TEAM", label: "团队可见", desc: "所有团队成员可查看" },
+  { value: "GROUP", label: "按授权可见", desc: "仅授权成员/群组可见" },
+  { value: "PRIVATE", label: "私有专属", desc: "仅您个人可见" },
+  { value: "PUBLIC", label: "全员公开", desc: "对外开放访问" },
+] as const
+
 export function PermissionEditor({
   resourceId,
   visibility,
@@ -149,15 +156,15 @@ export function PermissionEditor({
     }
   }
 
-  async function toggleVisibility() {
+  async function changeVisibility(nextVis: "TEAM" | "GROUP" | "PRIVATE" | "PUBLIC") {
+    if (nextVis === currentVis) return
     setIsVisSaving(true)
     setMessage("")
     try {
-      const nextVis = currentVis === "TEAM" ? "PRIVATE" : "TEAM"
       const result = await updateResourceVisibility(resourceId, nextVis)
       if (result.success) {
         setCurrentVis(nextVis)
-        setMessage(`✅ 已切换为${nextVis === "TEAM" ? "「全员可见」" : "「私有专属」"}`)
+        setMessage(`✅ 已切换为「${visibilityOptions.find(o => o.value === nextVis)?.label ?? nextVis}」`)
         setTimeout(() => setMessage(""), 3000)
       } else {
         setMessage(`❌ 切换失败: ${result.error}`)
@@ -240,24 +247,42 @@ export function PermissionEditor({
 
   return (
     <div className="space-y-4">
-      {/* Global Visibility Toggle */}
-      <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 p-4">
-        <div>
-          <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-            全员基础查阅权限
-            <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", isGlobalView ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground")}>
-              {isGlobalView ? "已开启" : "已关闭"}
-            </span>
-          </h4>
+      {/* Global Visibility Selector */}
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+              全员基础查阅权限
+              <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", isGlobalView ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground")}>
+                {isGlobalView ? "已开启" : "已关闭"}
+              </span>
+            </h4>
+          </div>
         </div>
-        <Button
-          variant={isGlobalView ? "default" : "outline"}
-          onClick={toggleVisibility}
-          disabled={isVisSaving}
-          className="shrink-0 h-8 text-xs font-semibold"
-        >
-          {isGlobalView ? "关闭全员查阅" : "开启全员查阅"}
-        </Button>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {visibilityOptions.map(option => {
+            const active = currentVis === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                disabled={isVisSaving}
+                onClick={() => changeVisibility(option.value)}
+                className={cn(
+                  "rounded-lg border px-2.5 py-2 text-left transition",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                    : "border-border/80 bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                )}
+              >
+                <span className="block text-xs font-bold">{option.label}</span>
+                <span className={cn("block text-[10px] mt-0.5", active ? "text-primary-foreground/80" : "text-muted-foreground/70")}>
+                  {option.desc}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Add Subject Section */}

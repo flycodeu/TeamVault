@@ -4,7 +4,15 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm"
 
 import { getCurrentUser } from "@/lib/auth/session"
 import { db } from "@/lib/db"
-import { credentialPermissions, credentials, groupMembers, resourcePermissions, resources } from "@/lib/db/schema"
+import {
+  credentialPermissions,
+  credentials,
+  groupMembers,
+  resourceLinkPermissions,
+  resourceLinks,
+  resourcePermissions,
+  resources,
+} from "@/lib/db/schema"
 
 export type ResourcePermission = "VIEW" | "VIEW_SECRET" | "VIEW_FILE" | "DOWNLOAD" | "EDIT" | "SHARE"
 
@@ -16,10 +24,9 @@ export async function canResource(resourceId: string, permission: ResourcePermis
   if (!resource || resource.deletedAt) return false
   if (resource.ownerId === user.id) return true
 
-  const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
-
   if (resource.visibility === "TEAM" || resource.visibility === "PUBLIC") {
-    if (permission === "VIEW") return true
+    // 团队资源自动开放基础查看与自由分享（分享内容仍受逐项权限校验约束）
+    if (permission === "VIEW" || permission === "SHARE") return true
   }
 
   const direct = await db.query.resourcePermissions.findFirst({
@@ -80,8 +87,6 @@ export async function canViewCredential(credentialId: string) {
 
   if (!(await canViewResource(credential.resourceId))) return false
 
-  const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
-
   if (credential.accessMode === "RESOURCE") {
     return canViewSecret(credential.resourceId)
   }
@@ -104,6 +109,49 @@ export async function canViewCredential(credentialId: string) {
         eq(credentialPermissions.credentialId, credentialId),
         eq(credentialPermissions.subjectType, "GROUP"),
         eq(credentialPermissions.subjectId, membership.groupId),
+      ),
+    })
+    if (groupGrant) return true
+  }
+  return false
+}
+
+export async function canViewResourceLink(linkId: string) {
+  const user = await getCurrentUser()
+  if (!user) return false
+  if (user.isAdmin) return true
+
+  const link = await db.query.resourceLinks.findFirst({ where: eq(resourceLinks.id, linkId) })
+  if (!link) return false
+
+  const resource = await db.query.resources.findFirst({ where: eq(resources.id, link.resourceId) })
+  if (!resource || resource.deletedAt) return false
+  if (resource.ownerId === user.id) return true
+
+  if (!(await canViewResource(link.resourceId))) return false
+
+  if (link.accessMode === "RESOURCE") {
+    return true
+  }
+
+  // RESTRICTED mode: check direct user grant
+  const direct = await db.query.resourceLinkPermissions.findFirst({
+    where: and(
+      eq(resourceLinkPermissions.linkId, linkId),
+      eq(resourceLinkPermissions.subjectType, "USER"),
+      eq(resourceLinkPermissions.subjectId, user.id),
+    ),
+  })
+  if (direct) return true
+
+  // Check group grant
+  const memberships = await db.select({ groupId: groupMembers.groupId }).from(groupMembers).where(eq(groupMembers.userId, user.id))
+  for (const membership of memberships) {
+    const groupGrant = await db.query.resourceLinkPermissions.findFirst({
+      where: and(
+        eq(resourceLinkPermissions.linkId, linkId),
+        eq(resourceLinkPermissions.subjectType, "GROUP"),
+        eq(resourceLinkPermissions.subjectId, membership.groupId),
       ),
     })
     if (groupGrant) return true
@@ -177,8 +225,6 @@ export async function listPermittedResourceIds(permission: ResourcePermission) {
       allowedResourceIds.add(resource.id)
       continue
     }
-
-    const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
 
     if (resource.visibility === "TEAM" || resource.visibility === "PUBLIC") {
       if (permission === "VIEW") {

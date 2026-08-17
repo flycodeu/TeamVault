@@ -22,6 +22,11 @@ RUN groupadd --system --gid 1001 teamvault \
   && mkdir -p /app/data/files /app/data/previews /app/data/thumbnails /app/data/temp \
   && chown -R teamvault:teamvault /app/data
 
+# LibreOffice：用于将 Office 文档 (doc/docx/ppt/pptx/xls/xlsx) 转换为 PDF 预览
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress fonts-noto-cjk \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder --chown=teamvault:teamvault /app/.next/standalone ./
 COPY --from=builder --chown=teamvault:teamvault /app/.next/static ./.next/static
 COPY --from=builder --chown=teamvault:teamvault /app/public ./public
@@ -31,9 +36,12 @@ COPY --from=builder --chown=teamvault:teamvault /app/scripts ./scripts
 COPY --from=builder --chown=teamvault:teamvault /app/lib ./lib
 COPY --from=builder --chown=teamvault:teamvault /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=teamvault:teamvault /app/package.json ./package.json
+COPY --from=builder --chown=teamvault:teamvault /app/docker-entrypoint.sh ./docker-entrypoint.sh
+
+RUN chmod +x ./docker-entrypoint.sh
 
 USER teamvault
 EXPOSE 3030
 ENV PORT=3030
 ENV HOSTNAME=0.0.0.0
-CMD ["node", "server.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

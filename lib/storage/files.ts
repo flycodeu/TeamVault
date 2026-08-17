@@ -2,7 +2,11 @@ import "server-only"
 
 import { createHash, randomUUID } from "node:crypto"
 import fs from "node:fs/promises"
+import { createWriteStream } from "node:fs"
 import path from "node:path"
+import { Transform } from "node:stream"
+import { pipeline } from "node:stream/promises"
+import { Readable } from "node:stream"
 
 import { allowedFileExtensions, storageDirectoryForExtension } from "@/lib/file/kinds"
 
@@ -27,11 +31,25 @@ export async function persistUpload(file: File, extension: string) {
   const target = path.join(root, relativePath)
   const temp = path.join(process.cwd(), "data", "temp", `${randomUUID()}.upload`)
   await fs.mkdir(path.dirname(temp), { recursive: true })
-  const bytes = Buffer.from(await file.arrayBuffer())
-  const sha256 = createHash("sha256").update(bytes).digest("hex")
-  await fs.writeFile(temp, bytes, { flag: "wx" })
+
+  // 流式写盘：边写边计算 SHA-256，避免将整个文件（上限 500MB）读入内存
+  const hash = createHash("sha256")
+  let size = 0
+  const hashingTransform = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      hash.update(chunk)
+      size += chunk.length
+      callback(null, chunk)
+    },
+  })
+  await pipeline(
+    Readable.fromWeb(file.stream() as unknown as import("node:stream/web").ReadableStream),
+    hashingTransform,
+    createWriteStream(temp, { flags: "wx" }),
+  )
+  const sha256 = hash.digest("hex")
   await fs.rename(temp, target)
-  return { storageName, storagePath: relativePath, sha256, size: bytes.byteLength }
+  return { storageName, storagePath: relativePath, sha256, size }
 }
 
 export function safeStoragePath(relativePath: string) {

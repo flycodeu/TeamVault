@@ -21,23 +21,38 @@ function sessionDays() {
   return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_SESSION_DAYS
 }
 
+function isSecureCookie() {
+  if (process.env.TEAMVAULT_SECURE_COOKIE === "false" || process.env.TEAMVAULT_SECURE_COOKIE === "0") {
+    return false
+  }
+  if (process.env.TEAMVAULT_SECURE_COOKIE === "true" || process.env.TEAMVAULT_SECURE_COOKIE === "1") {
+    return true
+  }
+  return process.env.NODE_ENV === "production"
+}
+
 export async function createSession(userId: string) {
   const token = randomBytes(32).toString("base64url")
   const expiresAt = new Date(Date.now() + sessionDays() * 24 * 60 * 60 * 1000)
   const requestHeaders = await headers()
 
+  const clientIp =
+    requestHeaders.get("x-real-ip")?.trim() ||
+    requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "127.0.0.1"
+
   await db.insert(sessions).values({
     userId,
     tokenHash: tokenHash(token),
     expiresAt,
-    ip: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim(),
+    ip: clientIp,
     userAgent: requestHeaders.get("user-agent")?.slice(0, 500),
   })
 
   const cookieStore = await cookies()
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookie(),
     sameSite: "lax",
     path: "/",
     expires: expiresAt,

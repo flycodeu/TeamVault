@@ -10,9 +10,12 @@ type AuditAction = typeof auditLogs.$inferInsert.action
 export async function writeAudit(input: { userId: string; action: AuditAction; resourceId?: string; targetType?: string; targetId?: string }) {
   try {
     const requestHeaders = await headers()
+    const clientIp =
+      requestHeaders.get("x-real-ip")?.trim() ||
+      requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim()
     await db.insert(auditLogs).values({
       ...input,
-      ip: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim(),
+      ip: clientIp,
       userAgent: requestHeaders.get("user-agent")?.slice(0, 500),
     })
   } catch (error) {

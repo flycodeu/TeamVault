@@ -51,7 +51,7 @@ export default async function SharePage({
   const proof = (await cookies()).get(`teamvault_share_${share.id}`)?.value
   const granted = !share.passwordHash || (proof ? verifyShareAccessProof(proof, share.id, tokenHash) : false)
   const query = await searchParams
-  if (!granted) return <PasswordGate token={token} hasError={Boolean(query.error)} />
+  if (!granted) return <PasswordGate token={token} errorType={typeof query.error === "string" ? query.error : ""} />
   if (!(await consumeShare(token))) notFound()
 
   // 1. Single File Share
@@ -117,7 +117,12 @@ export default async function SharePage({
 
   const [allResourceFiles, links, allCredentials] = await Promise.all([
     db.query.files.findMany({ where: eq(files.resourceId, resource.id) }),
-    db.query.resourceLinks.findMany({ where: eq(resourceLinks.resourceId, resource.id) }),
+    db.query.resourceLinks.findMany({
+      where: and(
+        eq(resourceLinks.resourceId, resource.id),
+        eq(resourceLinks.accessMode, "RESOURCE"),
+      ),
+    }),
     share.allowCredentials
       ? db.query.credentials.findMany({ where: eq(credentials.resourceId, resource.id) })
       : [],
@@ -339,7 +344,7 @@ function ShareShell({
   )
 }
 
-function PasswordGate({ token, hasError }: { token: string; hasError: boolean }) {
+function PasswordGate({ token, errorType }: { token: string; errorType?: string }) {
   return (
     <main className="mx-auto min-h-screen max-w-md px-4 py-16">
       <div className="flex items-center justify-center gap-2 text-sm font-bold text-foreground">
@@ -366,7 +371,9 @@ function PasswordGate({ token, hasError }: { token: string; hasError: boolean })
               className="h-10 w-full rounded-xl border border-border bg-background px-3.5 text-center font-mono tracking-widest text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               placeholder="输入 4 位提取码或访问密码"
             />
-            {hasError ? (
+            {errorType === "rate" ? (
+              <p className="text-xs text-destructive text-center font-medium pt-1">尝试次数过多，请 15 分钟后再试</p>
+            ) : errorType === "password" ? (
               <p className="text-xs text-destructive text-center font-medium pt-1">提取密码错误，请重试</p>
             ) : null}
           </div>

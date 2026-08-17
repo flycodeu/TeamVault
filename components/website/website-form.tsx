@@ -612,7 +612,7 @@ export function WebsiteForm({
                           </div>
                         ) : (
                           <p className="text-[11px] text-muted-foreground/70">
-                            该账号跟随网站全员公开，所有能访问该网站的成员均可查看与使用。
+                            该账号沿用模块授权：团队成员需在「成员授权」中被授予「密码/凭据」权限后方可查看与使用。
                           </p>
                         )}
                       </div>
