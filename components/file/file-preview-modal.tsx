@@ -230,6 +230,7 @@ export function FilePreviewModal({
             <FilePreviewViewer
               contentUrl={contentUrl}
               wordTextUrl={wordTextUrl}
+              downloadUrl={allowDownload ? downloadUrl : undefined}
               file={{
                 originalName: file.originalName,
                 mimeType: file.mimeType,

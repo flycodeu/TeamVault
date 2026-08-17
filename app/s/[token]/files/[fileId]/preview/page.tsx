@@ -35,6 +35,7 @@ export default async function SharedFilePreviewPage({ params }: { params: Promis
       <FilePreviewViewer
         contentUrl={`/s/${token}/files/${file.id}/content`}
         wordTextUrl={`/s/${token}/files/${file.id}/word-text`}
+        downloadUrl={access.share.allowDownload ? `/s/${token}/files/${file.id}/download` : undefined}
         file={{
           originalName: file.originalName,
           mimeType: file.mimeType,
