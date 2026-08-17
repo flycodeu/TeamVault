@@ -9,8 +9,9 @@ import { pipeline } from "node:stream/promises"
 import { Readable } from "node:stream"
 
 import { allowedFileExtensions, storageDirectoryForExtension } from "@/lib/file/kinds"
+import { storageRoot, tempRoot } from "@/lib/paths"
 
-const root = path.resolve(process.cwd(), "data", "files")
+const root = storageRoot()
 const allowed = new Set<string>(allowedFileExtensions)
 const maxBytes = 500 * 1024 * 1024
 
@@ -29,7 +30,7 @@ export async function persistUpload(file: File, extension: string) {
   const storageName = `${randomUUID()}.${extension}`
   const relativePath = path.join(/* turbopackIgnore: true */ relativeDir, storageName)
   const target = path.join(root, relativePath)
-  const temp = path.join(process.cwd(), "data", "temp", `${randomUUID()}.upload`)
+  const temp = path.join(tempRoot(), `${randomUUID()}.upload`)
   await fs.mkdir(path.dirname(temp), { recursive: true })
 
   // 流式写盘：边写边计算 SHA-256，避免将整个文件（上限 500MB）读入内存

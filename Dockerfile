@@ -22,11 +22,6 @@ RUN groupadd --system --gid 1001 teamvault \
   && mkdir -p /app/data/files /app/data/previews /app/data/thumbnails /app/data/temp \
   && chown -R teamvault:teamvault /app/data
 
-# LibreOffice：用于将 Office 文档 (doc/docx/ppt/pptx/xls/xlsx) 转换为 PDF 预览
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress fonts-noto-cjk \
-  && rm -rf /var/lib/apt/lists/*
-
 COPY --from=builder --chown=teamvault:teamvault /app/.next/standalone ./
 COPY --from=builder --chown=teamvault:teamvault /app/.next/static ./.next/static
 COPY --from=builder --chown=teamvault:teamvault /app/public ./public

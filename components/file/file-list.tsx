@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import type { FileRecord } from "@/lib/db/schema"
 import { deleteFile } from "@/lib/file/actions"
-import { fileKindMeta, fileKindOrder, getFileKind } from "@/lib/file/kinds"
+import { fileKindMeta, fileKindOrder, getFileKind, getPreviewKind } from "@/lib/file/kinds"
 import { cn } from "@/lib/utils"
 import { FileActions } from "./file-actions"
 
@@ -339,6 +339,7 @@ function DocumentList({
         const badge = getExtensionBadge(file.extension)
         const BadgeIcon = badge.icon
         const isSelected = selectedIds.has(file.id)
+        const previewSupported = getPreviewKind(file) !== "NONE"
 
         return (
           <article
@@ -386,8 +387,8 @@ function DocumentList({
               <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <span>{formatSize(file.size)}</span>
                 <span>·</span>
-                <span className={file.previewStatus === "SUCCESS" ? "text-primary font-medium" : ""}>
-                  {file.previewStatus === "SUCCESS" ? "支持在线预览" : "可直接下载"}
+                <span className={previewSupported ? "font-medium text-primary" : ""}>
+                  {previewSupported ? "支持在线预览" : "仅支持下载"}
                 </span>
               </div>
             </div>

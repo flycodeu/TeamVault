@@ -44,8 +44,10 @@ TeamVault 用于小组内部统一管理：
 | 敏感数据加密 | AES-256-GCM |
 | 文件 | **服务器本地文件系统** |
 | 图片 | Sharp |
-| PDF | PDF.js |
-| PPT/DOC/XLS | LibreOffice Headless → PDF |
+| PDF | PDF.js（浏览器端只读渲染） |
+| PPTX | @office-kit/pptx（浏览器端只读渲染） |
+| XLS/XLSX/CSV | SheetJS（浏览器端只读表格） |
+| DOCX / DOC | docx-preview 排版 / 旧版 DOC 文本提取 |
 | 部署 | Docker |
 | 反向代理 | Nginx |
 | 备份 | SQLite + `/data` 打包 |
@@ -89,13 +91,11 @@ TeamVault 用于小组内部统一管理：
            ▼              ▼              ▼
         SQLite       Local Files      Crypto
            │              │              │
-      资源/用户等      PDF/PPT/图片     AES-GCM
-                          │
-                          ▼
-                     LibreOffice
-                          │
-                          ▼
-                     Preview PDF
+       资源/用户等      原始文件流       AES-GCM
+                           │
+                           ▼
+                  浏览器只读预览组件
+              PDF.js / Office Kit / SheetJS
 ```
 
 ---
@@ -733,71 +733,57 @@ Monaco Editor
 
 ---
 
-## 十五、Office 文件预览
+## 十五、浏览器端只读预览
 
-支持：
+V1 只做预览，不提供在线编辑。服务端通过鉴权后的文件接口直接流式返回原始文件，浏览器按文件类型选择查看器：
 
 ```text
-PPT
 PPTX
-DOC
 DOCX
+DOC（兼容文本预览）
 XLS
 XLSX
+CSV
+PDF
+图片
+视频 / 音频
+文本 / ZIP 目录
 ```
 
 流程：
 
 ```text
-original.pptx
+鉴权后的原始文件流（支持 HTTP Range）
      │
-     ▼
-LibreOffice Headless
-     │
-     ▼
-preview.pdf
-     │
-     ▼
-PDF.js
+     ├── PDF → PDF.js
+     ├── PPTX → @office-kit/pptx
+     ├── DOCX → docx-preview
+     ├── DOC → Node 内直接提取可读文本
+     ├── XLS/XLSX/CSV → SheetJS
+     ├── 图片/视频/音频 → 浏览器原生能力
+     └── 文本/ZIP → 轻量只读查看器
 ```
 
-这样不需要部署 OnlyOffice。
+不部署 LibreOffice、OnlyOffice 或 Office 转换服务。旧版 PPT 和浏览器不支持的视频编码提供原文件下载。DOCX 受 HTML 排版能力限制；旧版 DOC 仅保证正文等文本可阅读，不承诺像素级还原。
 
 ---
 
-## 十六、预览任务
+## 十六、预览资源边界
 
-Office 转 PDF 不要阻塞上传。
+上传完成后文件立即可预览，不创建转换任务，也不阻塞上传请求。
 
-上传完成后立即返回：
-
-```text
-上传成功
-预览生成中
-```
-
-后台异步执行转换。
-
-第一版不使用 Redis / RabbitMQ，可增加：
+浏览器端解析必须设置资源上限：
 
 ```text
-preview_job
+PPTX：最大 50 MB
+DOCX：最大 30 MB
+DOC：最大 25 MB，仅提取可读文本
+XLS/XLSX/CSV：最大 25 MB，界面最多展示 500 行 × 50 列
+ZIP：最大 30 MB，目录最多展示 2000 项
+文本：只读取前 1 MB
 ```
 
-状态：
-
-```text
-PENDING
-PROCESSING
-SUCCESS
-FAILED
-```
-
-Node 内部 Worker 定时处理即可。
-
-仍然保持：
-
-> **单 Node 进程。**
+超过限制、格式损坏或浏览器无法解码时，明确提示用户下载原文件。数据库中已有的历史预览字段和任务表仅用于兼容旧数据，不再由运行时读写。
 
 ---
 
@@ -1499,35 +1485,35 @@ TXT / JSON 预览
 
 ---
 
-## Phase 4：Office 预览
+## Phase 4：浏览器端只读预览
 
-加入：
+加入统一预览入口：
 
 ```text
-LibreOffice
+PDF.js
+@office-kit/pptx
+SheetJS
+浏览器原生图片 / 视频 / 音频能力
 ```
 
 实现：
 
 ```text
-DOCX → PDF
-PPTX → PDF
-XLSX → PDF
+PDF → 分页画布
+PPTX → 只读幻灯片
+DOCX → 只读分页排版
+DOC → 只读文本兼容预览
+XLS/XLSX/CSV → 只读工作表
+图片 / 视频 / 音频 / 文本 / ZIP → 对应只读查看器
 ```
 
-加入：
+要求：
 
 ```text
-preview_job
-```
-
-状态：
-
-```text
-等待中
-转换中
-成功
-失败
+登录态与分享链接复用同一套预览组件
+文件接口支持 HTTP Range
+分享链接继续执行 allowPreview / allowDownload 权限
+不安装 LibreOffice，不启动转换 Worker
 ```
 
 ---
@@ -1950,9 +1936,9 @@ File
           │               │                │
           │          ┌────┴────┐           │
           │          │         │           │
-          │        Sharp   LibreOffice     │
+          │        Sharp   原始文件流       │
           │                    │           │
-          │                 PDF.js         │
+          │       浏览器只读预览组件        │
           │                                │
           └────────────── TeamVault ───────┘
 ```

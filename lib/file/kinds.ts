@@ -26,6 +26,12 @@ const documentExtensions = new Set(["pdf", "ppt", "pptx", "doc", "docx", "xls", 
 const textExtensions = new Set(["txt", "md", "json", "xml", "yaml", "yml", "sql", "log", "csv"])
 const archiveExtensions = new Set(["zip", "7z", "tar", "gz", "mp4", "webm", "mov", "mp3", "wav"])
 
+const presentationExtensions = new Set(["pptx"])
+const spreadsheetExtensions = new Set(["xls", "xlsx", "csv"])
+const wordExtensions = new Set(["doc", "docx"])
+const videoExtensions = new Set(["mp4", "webm", "mov"])
+const audioExtensions = new Set(["mp3", "wav"])
+
 export function getFileKind(file: Pick<FileRecord, "extension" | "mimeType">): FileKind {
   const extension = file.extension?.toLowerCase() ?? ""
   if (imageExtensions.has(extension) || file.mimeType.startsWith("image/")) return "IMAGE"
@@ -37,6 +43,32 @@ export function getFileKind(file: Pick<FileRecord, "extension" | "mimeType">): F
 
 export function isImageFile(file: Pick<FileRecord, "extension" | "mimeType">) {
   return getFileKind(file) === "IMAGE"
+}
+
+export const previewKindOrder = ["PDF", "PRESENTATION", "SPREADSHEET", "WORD", "IMAGE", "TEXT", "VIDEO", "AUDIO", "ZIP", "NONE"] as const
+export type PreviewKind = typeof previewKindOrder[number]
+
+/**
+ * 在线预览能力分类：
+ * - PDF：PDF.js 浏览器渲染
+ * - PRESENTATION：PPTX 浏览器端只读渲染
+ * - SPREADSHEET：XLS/XLSX/CSV 浏览器端只读表格
+ * - WORD：DOCX 浏览器端排版；旧版 DOC 提取文本兼容预览
+ * - IMAGE / TEXT / VIDEO / AUDIO / ZIP：浏览器原生或 JSZip 预览
+ * - NONE：暂不支持在线预览
+ */
+export function getPreviewKind(file: Pick<FileRecord, "extension" | "mimeType">): PreviewKind {
+  const extension = file.extension?.toLowerCase() ?? ""
+  if (file.mimeType === "application/pdf" || extension === "pdf") return "PDF"
+  if (presentationExtensions.has(extension)) return "PRESENTATION"
+  if (spreadsheetExtensions.has(extension)) return "SPREADSHEET"
+  if (wordExtensions.has(extension)) return "WORD"
+  if (imageExtensions.has(extension) || file.mimeType.startsWith("image/")) return "IMAGE"
+  if (videoExtensions.has(extension) || file.mimeType.startsWith("video/")) return "VIDEO"
+  if (audioExtensions.has(extension) || file.mimeType.startsWith("audio/")) return "AUDIO"
+  if (textExtensions.has(extension) || file.mimeType.startsWith("text/")) return "TEXT"
+  if (extension === "zip" || file.mimeType === "application/zip") return "ZIP"
+  return "NONE"
 }
 
 export function storageDirectoryForExtension(extension: string) {

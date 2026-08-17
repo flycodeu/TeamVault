@@ -8,7 +8,6 @@ import { writeAudit } from "@/lib/audit/log"
 import { normalizeUploadMimeType } from "@/lib/file/kinds"
 import { persistUpload, validateUpload } from "@/lib/storage/files"
 import { canEditResource } from "@/lib/permission"
-import { enqueuePreview } from "@/lib/preview/worker"
 import { requireSameOrigin } from "@/lib/auth/csrf"
 
 export async function POST(request: Request) {
@@ -25,7 +24,6 @@ export async function POST(request: Request) {
     const extension = validateUpload(file)
     const saved = await persistUpload(file, extension)
     const [record] = await db.insert(files).values({ resourceId, originalName: file.name.slice(0, 255), ...saved, mimeType: normalizeUploadMimeType(file.type, extension), extension, createdBy: user.id }).returning({ id: files.id })
-    await enqueuePreview(record.id, extension)
     await writeAudit({ userId: user.id, action: "FILE_UPLOAD", resourceId, targetType: "FILE", targetId: record.id })
     return NextResponse.json({ success: true, data: record }, { status: 201 })
   } catch (error) {

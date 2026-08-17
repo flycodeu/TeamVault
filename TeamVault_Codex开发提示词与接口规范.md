@@ -55,7 +55,10 @@ AES-256-GCM
 本地文件系统
 Sharp
 PDF.js
-LibreOffice Headless
+@office-kit/pptx
+SheetJS
+docx-preview
+word-extractor
 
 Docker
 ```
@@ -794,70 +797,54 @@ CSV
 
 使用轻量只读查看器，必要时 Monaco。
 
-Office：
+Office 与表格：
 
 ```text
-DOC
-DOCX
-PPT
 PPTX
+DOCX
+DOC
 XLS
 XLSX
+CSV
 ```
 
-使用：
+浏览器端只读渲染：
 
 ```text
-LibreOffice Headless
+PPTX → @office-kit/pptx
+DOCX → docx-preview 浏览器端排版
+DOC → word-extractor 服务端只读文本提取
+XLS/XLSX/CSV → SheetJS
 ```
 
-转换为 PDF：
+预览链路：
 
 ```text
-Office
-  ↓
-LibreOffice
-  ↓
-Preview PDF
-  ↓
-PDF.js
+鉴权后的原始文件流（支持 HTTP Range）
+  ├─ PDF → PDF.js
+  ├─ PPTX → Office Kit
+  ├─ DOCX → docx-preview
+  ├─ DOC → 鉴权后提取可读文本
+  └─ XLS/XLSX/CSV → SheetJS
 ```
 
-禁止引入 OnlyOffice。
+不安装 LibreOffice，不引入 OnlyOffice，不启动 Office 转换 Worker。旧版 PPT 仅提供下载；DOCX 提供浏览器排版预览，旧版 DOC 提供文本兼容预览，不承诺像素级版式还原。
 
 ---
 
-## 19. Preview Job
+## 19. Preview Resource Limits
 
-不要 Redis。
+浏览器解析需要明确上限，防止大文件耗尽客户端内存：
 
-SQLite：
-
-```text
-preview_job
+PPTX：50 MB
+DOCX：30 MB
+DOC：25 MB，仅提取可读文本
+XLS/XLSX/CSV：25 MB，最多展示 500 行 × 50 列
+ZIP：30 MB，最多展示 2000 项
+文本：读取前 1 MB
 ```
 
-状态：
-
-```text
-PENDING
-PROCESSING
-SUCCESS
-FAILED
-```
-
-应用内部 Worker 处理。
-
-必须防止：
-
-```text
-同一个任务重复处理
-应用重启后 PROCESSING 永久卡死
-```
-
-启动时可以恢复异常任务。
-
-实现保持简单。
+超限、文件损坏或编码不受浏览器支持时显示可操作提示，并根据权限提供原文件下载。不要创建 `preview_job`；历史字段和表仅为数据库兼容保留。
 
 ---
 
@@ -1722,22 +1709,23 @@ SQLite 管 Metadata
 
 ---
 
-## M5：Preview
+## M5：Browser Preview
 
 目标：
 
 ```text
 Sharp 缩略图
-LibreOffice Headless
-PPTX → PDF
-DOCX → PDF
-XLSX → PDF
-preview_job
-失败重试
-异常任务恢复
+PDF.js 分页预览
+PPTX 浏览器端只读预览
+DOCX 浏览器端只读排版预览
+DOC 服务端文本兼容预览
+XLS/XLSX/CSV 浏览器端只读表格
+图片 / 视频 / 音频 / 文本 / ZIP 只读预览
+登录态和分享态复用统一查看器
+Range 请求与下载权限校验
 ```
 
-禁止引入 Redis / Queue 服务。
+禁止引入 LibreOffice、OnlyOffice、Redis 或 Queue 服务。
 
 ---
 

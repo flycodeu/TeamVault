@@ -17,13 +17,5 @@ if [ -n "$TEAMVAULT_ADMIN_PASSWORD" ]; then
   node scripts/docker-bootstrap.mjs
 fi
 
-# 3. Start preview worker (resident): converts Office documents to PDF previews.
-if [ -f "/app/migration-node_modules/tsx/dist/cli.mjs" ]; then
-  echo "==> Starting preview worker..."
-  node /app/migration-node_modules/tsx/dist/cli.mjs /app/scripts/preview-worker.ts &
-else
-  echo "==> WARNING: tsx not found, preview worker not started (Office previews unavailable)."
-fi
-
 echo "==> Starting TeamVault server..."
 exec node server.js

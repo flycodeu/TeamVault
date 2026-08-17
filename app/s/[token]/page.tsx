@@ -407,8 +407,7 @@ function FileActions({
       {allowPreview ? (
         <Link
           className="inline-flex h-8 items-center gap-1 rounded-lg border border-border/80 bg-card px-2.5 text-xs font-medium text-foreground hover:bg-accent/40 transition"
-          href={`/s/${token}/files/${fileId}/content`}
-          target="_blank"
+          href={`/s/${token}/files/${fileId}/preview`}
         >
           <Eye className="size-3.5 text-muted-foreground" />
           <span>预览</span>
@@ -426,4 +425,3 @@ function FileActions({
     </div>
   )
 }
-
