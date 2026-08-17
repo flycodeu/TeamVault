@@ -1,19 +1,14 @@
 "use client"
 
 import {
-  AlignLeft,
-  BookOpen,
-  Check,
-  ChevronDown,
-  Expand,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   FileWarning,
   LoaderCircle,
-  Maximize2,
   Minus,
   Plus,
   RotateCcw,
-  ZoomIn,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
@@ -60,33 +55,9 @@ function secureRenderedLinks(container: HTMLElement) {
 
 export function DocxViewer({ name, size, url }: { name: string; size: number; url: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const wrapperRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(size <= DOCX_PREVIEW_MAX)
-
-  // Zoom & View Mode State
   const [zoom, setZoom] = useState<number>(1.0)
-  const [isFitWidth, setIsFitWidth] = useState<boolean>(true)
-  const [isFluidMode, setIsFluidMode] = useState<boolean>(false)
-
-  // Auto-calculate fit width zoom
-  useEffect(() => {
-    function computeFitWidth() {
-      if (!wrapperRef.current || !isFitWidth || isFluidMode) return
-      const containerWidth = wrapperRef.current.clientWidth - 48 // 48px padding
-      const standardA4Width = 816 // Standard A4 ~816px
-      if (containerWidth > 0 && containerWidth < standardA4Width) {
-        const ratio = Math.max(0.4, Math.min(1.0, containerWidth / standardA4Width))
-        setZoom(Number(ratio.toFixed(2)))
-      } else if (containerWidth >= standardA4Width) {
-        setZoom(1.0)
-      }
-    }
-
-    computeFitWidth()
-    window.addEventListener("resize", computeFitWidth)
-    return () => window.removeEventListener("resize", computeFitWidth)
-  }, [isFitWidth, isFluidMode, loading])
 
   // Render DOCX content
   useEffect(() => {
@@ -104,15 +75,15 @@ export function DocxViewer({ name, size, url }: { name: string; size: number; ur
 
         target.replaceChildren()
         await renderAsync(await response.arrayBuffer(), target, target, {
-          breakPages: !isFluidMode,
+          breakPages: true,
           ignoreLastRenderedPageBreak: false,
           renderAltChunks: false,
           renderComments: false,
           renderChanges: false,
           useBase64URL: true,
           inWrapper: true,
-          ignoreWidth: isFluidMode,
-          ignoreHeight: isFluidMode,
+          ignoreWidth: false,
+          ignoreHeight: false,
           ignoreFonts: false,
         })
 
@@ -132,49 +103,28 @@ export function DocxViewer({ name, size, url }: { name: string; size: number; ur
       controller.abort()
       container.replaceChildren()
     }
-  }, [size, url, isFluidMode])
+  }, [size, url])
 
   const sizeError =
     size > DOCX_PREVIEW_MAX ? "DOCX 超过 30MB，为避免浏览器内存占用过高，请下载后查看。" : ""
   if (sizeError || error) return <WordStatus error={sizeError || error} />
 
   function handleZoomIn() {
-    setIsFitWidth(false)
     setZoom(prev => Math.min(2.0, Number((prev + 0.1).toFixed(2))))
   }
 
   function handleZoomOut() {
-    setIsFitWidth(false)
-    setZoom(prev => Math.max(0.4, Number((prev - 0.1).toFixed(2))))
+    setZoom(prev => Math.max(0.5, Number((prev - 0.1).toFixed(2))))
   }
 
   function handleZoomReset() {
-    setIsFitWidth(false)
     setZoom(1.0)
   }
 
-  function handleToggleFitWidth() {
-    if (!isFitWidth) {
-      setIsFitWidth(true)
-      if (wrapperRef.current) {
-        const containerWidth = wrapperRef.current.clientWidth - 48
-        const standardA4Width = 816
-        if (containerWidth > 0 && containerWidth < standardA4Width) {
-          setZoom(Number((containerWidth / standardA4Width).toFixed(2)))
-        } else {
-          setZoom(1.0)
-        }
-      }
-    } else {
-      setIsFitWidth(false)
-      setZoom(1.0)
-    }
-  }
-
   return (
-    <div className="flex h-full w-full flex-col bg-slate-100 dark:bg-zinc-950 overflow-hidden">
+    <div className="flex h-full w-full flex-col bg-slate-100/90 dark:bg-zinc-950 overflow-hidden">
       {/* Top Floating Toolbar */}
-      <div className="sticky top-0 z-20 flex h-11 shrink-0 items-center justify-between border-b border-border/80 bg-background/95 px-3 py-1 text-xs backdrop-blur-md md:px-5">
+      <div className="sticky top-0 z-20 flex h-11 shrink-0 items-center justify-between border-b border-border/80 bg-background/95 px-4 text-xs backdrop-blur-md md:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <span className="flex size-6 shrink-0 items-center justify-center rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
             DOCX
@@ -184,16 +134,15 @@ export function DocxViewer({ name, size, url }: { name: string; size: number; ur
           </span>
         </div>
 
-        {/* View Controls */}
-        <div className="flex items-center gap-1">
-          {/* Zoom controls */}
-          <div className="flex items-center rounded-lg border border-border/60 bg-muted/30 p-0.5">
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-lg border border-border/60 bg-muted/40 p-0.5">
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={handleZoomOut}
-              disabled={zoom <= 0.4 || isFluidMode}
+              disabled={zoom <= 0.5}
               className="size-6 text-muted-foreground hover:text-foreground disabled:opacity-30"
               title="缩小"
             >
@@ -203,9 +152,8 @@ export function DocxViewer({ name, size, url }: { name: string; size: number; ur
             <button
               type="button"
               onClick={handleZoomReset}
-              disabled={isFluidMode}
-              className="min-w-10 px-1 text-center font-mono text-[11px] font-semibold text-foreground hover:text-primary transition disabled:opacity-40"
-              title="重置为 100%"
+              className="min-w-10 px-1.5 text-center font-mono text-[11px] font-semibold text-foreground hover:text-primary transition"
+              title="点击重置为 100%"
             >
               {Math.round(zoom * 100)}%
             </button>
@@ -215,7 +163,7 @@ export function DocxViewer({ name, size, url }: { name: string; size: number; ur
               variant="ghost"
               size="icon"
               onClick={handleZoomIn}
-              disabled={zoom >= 2.0 || isFluidMode}
+              disabled={zoom >= 2.0}
               className="size-6 text-muted-foreground hover:text-foreground disabled:opacity-30"
               title="放大"
             >
@@ -223,82 +171,55 @@ export function DocxViewer({ name, size, url }: { name: string; size: number; ur
             </Button>
           </div>
 
-          {/* Fit Width Button */}
-          <Button
-            type="button"
-            variant={isFitWidth && !isFluidMode ? "default" : "ghost"}
-            size="sm"
-            onClick={handleToggleFitWidth}
-            disabled={isFluidMode}
-            className={cn(
-              "h-7 gap-1 px-2 text-[11px] font-medium hidden sm:inline-flex",
-              isFitWidth && !isFluidMode ? "shadow-xs" : "text-muted-foreground hover:text-foreground",
-            )}
-            title="根据当前窗口宽度自动缩放，保证右侧完整可见"
-          >
-            <Expand className="size-3" />
-            <span>自适应宽</span>
-          </Button>
-
-          {/* Fluid vs Paginated Switch */}
-          <Button
-            type="button"
-            variant={isFluidMode ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setIsFluidMode(prev => !prev)}
-            className={cn(
-              "h-7 gap-1 px-2 text-[11px] font-medium",
-              isFluidMode ? "shadow-xs" : "text-muted-foreground hover:text-foreground",
-            )}
-            title={isFluidMode ? "切换为 A4 仿真分页视图" : "切换为 Web 流式换行排版，彻底避免右侧遮挡"}
-          >
-            <AlignLeft className="size-3" />
-            <span>{isFluidMode ? "分页视图" : "流式视图"}</span>
-          </Button>
+          <span className="text-[11px] text-muted-foreground font-medium pl-1 hidden sm:inline-block">
+            舒展宽幅排版
+          </span>
         </div>
       </div>
 
-      {/* Main Document Content Scroll Container */}
-      <div
-        ref={wrapperRef}
-        className="relative flex-1 overflow-x-auto overflow-y-auto p-3 md:p-6"
-      >
+      {/* Main Document Content Scroll Container with Generous Top/Bottom Clearance */}
+      <div className="relative flex-1 overflow-x-auto overflow-y-auto px-4 pt-6 pb-12 sm:px-6 sm:pt-8 sm:pb-16 md:px-8 md:pt-10 text-center">
         {loading ? <WordStatus loading /> : null}
 
         <div
           className={cn(
-            "docx-render-viewport mx-auto transition-opacity duration-200",
+            "docx-render-viewport inline-block text-left w-full max-w-5xl md:max-w-6xl mx-auto transition-opacity duration-200",
             loading ? "h-0 overflow-hidden opacity-0" : "opacity-100",
-            isFluidMode ? "max-w-4xl" : "w-fit min-w-fit",
           )}
-          style={
-            !isFluidMode && zoom !== 1.0
-              ? {
-                  transform: `scale(${zoom})`,
-                  transformOrigin: "top center",
-                  marginBottom: `${(zoom - 1) * 850}px`,
-                }
-              : undefined
-          }
+          style={{ zoom }}
         >
           <div
             ref={containerRef}
             className={cn(
-              "word-preview",
-              // docx-preview deep style resets and responsive enhancements
-              "[&_.docx-wrapper]:!bg-transparent [&_.docx-wrapper]:!p-0 [&_.docx-wrapper]:!w-full [&_.docx-wrapper]:!max-w-full",
-              "[&_.docx-wrapper>section.docx]:!mb-6 [&_.docx-wrapper>section.docx]:!rounded-sm [&_.docx-wrapper>section.docx]:!shadow-[0_4px_24px_rgba(0,0,0,0.12)] [&_.docx-wrapper>section.docx]:!border [&_.docx-wrapper>section.docx]:!border-border/60",
-              // Ensure text, tables and elements wrap and never clip on right
-              "[&_.docx-wrapper>section.docx]:!box-border [&_.docx-wrapper>section.docx]:!overflow-x-auto",
+              "word-preview w-full flex flex-col items-center",
+              // docx-preview style resets
+              "[&_.docx-wrapper]:!bg-transparent [&_.docx-wrapper]:!p-0 [&_.docx-wrapper]:!w-full [&_.docx-wrapper]:!flex [&_.docx-wrapper]:!flex-col [&_.docx-wrapper]:!items-center",
+              // Broad Page styling: wide layout, generous top padding, modern shadow
+              "[&_.docx-wrapper>section.docx]:!box-border",
+              "[&_.docx-wrapper>section.docx]:!w-full",
+              "[&_.docx-wrapper>section.docx]:!max-w-[1020px]",
+              "[&_.docx-wrapper>section.docx]:!mx-auto",
+              "[&_.docx-wrapper>section.docx]:!mt-2",
+              "[&_.docx-wrapper>section.docx]:!mb-12",
+              "[&_.docx-wrapper>section.docx]:!p-8 sm:[&_.docx-wrapper>section.docx]:!p-12 md:[&_.docx-wrapper>section.docx]:!p-16",
+              "[&_.docx-wrapper>section.docx]:!pt-10 sm:[&_.docx-wrapper>section.docx]:!pt-14 md:[&_.docx-wrapper>section.docx]:!pt-16",
+              "[&_.docx-wrapper>section.docx]:!bg-white",
+              "[&_.docx-wrapper>section.docx]:!text-zinc-900",
+              "[&_.docx-wrapper>section.docx]:!shadow-[0_6px_28px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)]",
+              "[&_.docx-wrapper>section.docx]:!border",
+              "[&_.docx-wrapper>section.docx]:!border-border/40",
+              "[&_.docx-wrapper>section.docx]:!rounded-lg",
+              "[&_.docx-wrapper>section.docx]:!overflow-x-auto",
               "[&_.docx-wrapper>section.docx]:!overflow-y-visible",
-              "[&_.docx-wrapper>section.docx]:!max-w-full",
-              "[&_.docx-wrapper_table]:!max-w-full [&_.docx-wrapper_table]:!border-collapse",
+              // Header and top article clearance
+              "[&_.docx-wrapper>section.docx>header]:!mb-6 [&_.docx-wrapper>section.docx>header]:!relative [&_.docx-wrapper>section.docx>header]:!z-10",
+              "[&_.docx-wrapper>section.docx>article]:!mt-0",
+              // Word text, table, paragraph wrapping
+              "[&_.docx-wrapper_table]:!w-full [&_.docx-wrapper_table]:!max-w-full [&_.docx-wrapper_table]:!border-collapse",
               "[&_.docx-wrapper_table_td]:!break-words [&_.docx-wrapper_table_th]:!break-words",
-              "[&_.docx-wrapper_p]:!break-words [&_.docx-wrapper_span]:!break-words",
+              "[&_.docx-wrapper_p]:!w-full [&_.docx-wrapper_p]:!break-words [&_.docx-wrapper_span]:!break-words",
               "[&_.docx-wrapper_img]:!max-w-full [&_.docx-wrapper_img]:!h-auto",
               "[&_.docx-wrapper_svg]:!max-w-full [&_.docx-wrapper_svg]:!h-auto",
-              isFluidMode &&
-                "[&_.docx-wrapper>section.docx]:!w-full [&_.docx-wrapper>section.docx]:!min-w-0 [&_.docx-wrapper>section.docx]:!min-h-0 [&_.docx-wrapper>section.docx]:!p-6 md:[&_.docx-wrapper>section.docx]:!p-10",
             )}
           />
         </div>
@@ -313,8 +234,8 @@ function TextSection({ title, content, muted = false }: { title: string; content
     <section
       className={
         muted
-          ? "border-y border-border/60 bg-muted/30 px-6 py-4 text-muted-foreground"
-          : "px-6 py-5 text-foreground"
+          ? "border-y border-border/60 bg-muted/30 px-6 sm:px-10 py-4 text-muted-foreground"
+          : "px-6 sm:px-10 py-5 text-foreground"
       }
     >
       <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary/80">{title}</p>
@@ -364,18 +285,20 @@ export function LegacyWordViewer({ name, textUrl }: { name: string; textUrl: str
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-slate-100 dark:bg-zinc-950 overflow-auto p-3 md:p-6">
-      <div className="mx-auto mb-3 flex w-full max-w-4xl items-center justify-between px-1 text-[11px] font-medium text-muted-foreground">
-        <span className="truncate" title={name}>
-          {name}
-        </span>
-        <span className="ml-4 shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-semibold border border-amber-500/20">
-          兼容文本排版
-        </span>
+    <div className="flex h-full w-full flex-col bg-slate-100/90 dark:bg-zinc-950 overflow-auto p-4 sm:p-6 md:p-8 text-center">
+      <div className="mb-3 inline-block text-left w-full max-w-5xl md:max-w-6xl">
+        <div className="flex items-center justify-between px-1 text-[11px] font-medium text-muted-foreground">
+          <span className="truncate" title={name}>
+            {name}
+          </span>
+          <span className="ml-4 shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-semibold border border-amber-500/20">
+            兼容文本排版
+          </span>
+        </div>
       </div>
-      <article className="mx-auto w-full max-w-4xl min-h-[600px] overflow-hidden rounded-xl bg-card border border-border/80 shadow-lg">
+      <article className="inline-block text-left w-full max-w-5xl md:max-w-6xl min-h-[600px] overflow-hidden rounded-xl bg-card border border-border/80 shadow-md">
         {content.truncated ? (
-          <p className="border-b border-amber-500/30 bg-amber-500/10 px-6 py-2.5 text-xs leading-5 text-amber-700 dark:text-amber-300">
+          <p className="border-b border-amber-500/30 bg-amber-500/10 px-6 sm:px-10 py-2.5 text-xs leading-5 text-amber-700 dark:text-amber-300">
             文档文本较多，为控制预览响应大小，仅显示前 200 万个字符。
           </p>
         ) : null}
