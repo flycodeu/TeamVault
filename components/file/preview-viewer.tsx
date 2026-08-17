@@ -145,7 +145,7 @@ function describeVideoError(code: number | null): { title: string; desc: string 
     case 3: // MEDIA_ERR_DECODE
       return {
         title: "视频解码失败",
-        desc: "文件可能已损坏或包含浏览器不支持的编码，请下载源文件后用本地播放器尝试打开。",
+        desc: "文件可能包含浏览器当前无法硬解的色彩/编码格式，请尝试兼容转码播放或下载源文件后打开。",
       }
     case 2: // MEDIA_ERR_NETWORK
       return {
@@ -155,8 +155,22 @@ function describeVideoError(code: number | null): { title: string; desc: string 
     default:
       return {
         title: "浏览器无法播放此视频",
-        desc: "视频封装或编码与当前浏览器不兼容。平台优先支持 MP4（H.264/AAC）和 WebM，可下载源文件后使用本地播放器查看。",
+        desc: "视频封装或编码与当前浏览器不兼容。可尝试兼容转码播放，或下载源文件后使用本地播放器查看。",
       }
+  }
+}
+
+function detectHevcSupport(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    const v = document.createElement("video")
+    return (
+      v.canPlayType('video/mp4; codecs="hvc1.1.6.L93.B0"') === "probably" ||
+      v.canPlayType('video/mp4; codecs="hev1.1.6.L93.B0"') === "probably" ||
+      v.canPlayType('video/mp4; codecs="hvc1"') === "probably"
+    )
+  } catch {
+    return false
   }
 }
 
@@ -165,11 +179,13 @@ function VideoFallback({
   desc,
   downloadUrl,
   onRetry,
+  onForceTranscode,
 }: {
   title: string
   desc: string
   downloadUrl?: string
   onRetry?: () => void
+  onForceTranscode?: () => void
 }) {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
@@ -179,6 +195,12 @@ function VideoFallback({
         <p className="mx-auto max-w-lg text-xs leading-5 text-muted-foreground">{desc}</p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">
+        {onForceTranscode ? (
+          <Button type="button" size="sm" className="h-8 gap-1.5 text-xs bg-teal-600 hover:bg-teal-700 text-white" onClick={onForceTranscode}>
+            <RotateCcw className="size-3.5" />
+            尝试兼容转码播放
+          </Button>
+        ) : null}
         {onRetry ? (
           <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={onRetry}>
             <RotateCcw className="size-3.5" />
@@ -186,7 +208,7 @@ function VideoFallback({
           </Button>
         ) : null}
         {downloadUrl ? (
-          <Button asChild size="sm" className="h-8 gap-1.5 text-xs">
+          <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
             <a href={downloadUrl}>
               <Download className="size-3.5" />
               下载源文件
@@ -195,7 +217,7 @@ function VideoFallback({
         ) : null}
       </div>
       <p className="max-w-md text-[11px] leading-5 text-muted-foreground/70">
-        平台优先支持 MP4（H.264/AAC）与 WebM（VP8/VP9/Opus）；如需在线播放，请将视频转码为上述格式后重新上传。
+        平台优先支持 MP4（H.264/AAC）与 WebM；如遇特殊编码格式，系统支持自动转码并始终保留原片下载。
       </p>
     </div>
   )
@@ -221,6 +243,7 @@ function VideoPreview({
   const [source, setSource] = useState<VideoSourceState>({ kind: "checking" })
   const [mediaError, setMediaError] = useState<number | null>(null)
   const [timedOut, setTimedOut] = useState(false)
+  const [forceTranscode, setForceTranscode] = useState(false)
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
@@ -228,7 +251,16 @@ function VideoPreview({
     let timer: ReturnType<typeof setTimeout> | undefined
     async function check() {
       try {
-        const response = await fetch(playableUrl, { cache: "no-store" })
+        const hevcSupported = detectHevcSupport()
+        const queryParams = new URLSearchParams()
+        if (hevcSupported) queryParams.set("hevc", "1")
+        if (forceTranscode) queryParams.set("force", "1")
+        const queryString = queryParams.toString()
+        const targetUrl = queryString
+          ? `${playableUrl}${playableUrl.includes("?") ? "&" : "?"}${queryString}`
+          : playableUrl
+
+        const response = await fetch(targetUrl, { cache: "no-store" })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const data = await response.json()
         if (cancelled) return
@@ -253,7 +285,7 @@ function VideoPreview({
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [playableUrl, contentUrl, convertedUrl, attempt])
+  }, [playableUrl, contentUrl, convertedUrl, attempt, forceTranscode])
 
   const readyUrl = source.kind === "ready" ? source.url : null
   useEffect(() => {
@@ -262,6 +294,20 @@ function VideoPreview({
     return () => clearTimeout(timer)
   }, [mediaError, readyUrl, attempt])
 
+  // 处理视频加载或解码异常：若原文件直出播放失败，自动容错切换为服务端兼容性转码
+  const handleVideoError = (code: number | null) => {
+    if (source.kind === "ready" && source.url === contentUrl && !forceTranscode) {
+      // 自动触发强制转码降级
+      setForceTranscode(true)
+      setSource({ kind: "converting" })
+      setMediaError(null)
+      setTimedOut(false)
+      setAttempt(current => current + 1)
+      return
+    }
+    setMediaError(code)
+  }
+
   const retry = () => {
     setMediaError(null)
     setTimedOut(false)
@@ -269,18 +315,35 @@ function VideoPreview({
     setAttempt(current => current + 1)
   }
 
+  const triggerForceTranscode = () => {
+    setForceTranscode(true)
+    setMediaError(null)
+    setTimedOut(false)
+    setSource({ kind: "converting" })
+    setAttempt(current => current + 1)
+  }
+
   if (mediaError !== null) {
     const info = describeVideoError(mediaError)
-    return <VideoFallback title={info.title} desc={info.desc} downloadUrl={downloadUrl} onRetry={retry} />
+    return (
+      <VideoFallback
+        title={info.title}
+        desc={info.desc}
+        downloadUrl={downloadUrl}
+        onRetry={retry}
+        onForceTranscode={!forceTranscode ? triggerForceTranscode : undefined}
+      />
+    )
   }
 
   if (timedOut) {
     return (
       <VideoFallback
         title="视频加载缓慢或无法播放"
-        desc="长时间未加载到视频信息，可能是网络较慢、文件过大，或封装/编码与浏览器不兼容。可重试一次，或下载源文件后用本地播放器查看。"
+        desc="长时间未加载到视频信息，可能是网络较慢、文件过大，或编码格式与当前浏览器不兼容。"
         downloadUrl={downloadUrl}
         onRetry={retry}
+        onForceTranscode={!forceTranscode ? triggerForceTranscode : undefined}
       />
     )
   }
@@ -293,8 +356,8 @@ function VideoPreview({
     return (
       <PreviewMessage
         icon={<LoaderCircle className="size-6 animate-spin text-teal-500" />}
-        title="正在转换视频格式…"
-        desc="该视频的封装或编码与当前浏览器不兼容，首次预览会自动转码为 H.264/AAC 在线播放，完成后自动开始；原文件不受影响。"
+        title={forceTranscode ? "正在进行兼容性转码…" : "正在转换视频格式…"}
+        desc="原视频的封装、编码或色彩格式（如 H.265/HEVC、ProRes、10-bit）当前浏览器无法直接硬解，系统正在自动转码为 H.264/AAC 在线播放，完成后自动开始；源文件始终保留不受影响。"
       />
     )
   }
@@ -307,7 +370,7 @@ function VideoPreview({
       },
       "convert-error": {
         title: "视频转码失败",
-        desc: "服务器转码服务不可用或转换失败（请确认已安装 FFmpeg）。可下载源文件后使用本地播放器查看。",
+        desc: "服务器转码服务不可用或转换失败（请确认服务器已安装 FFmpeg）。可下载源文件后使用本地播放器查看。",
       },
       "probe-error": {
         title: "无法识别该视频",
@@ -319,13 +382,21 @@ function VideoPreview({
       },
     }
     const info = messages[source.reason]
-    return <VideoFallback title={info.title} desc={info.desc} downloadUrl={downloadUrl} onRetry={retry} />
+    return (
+      <VideoFallback
+        title={info.title}
+        desc={info.desc}
+        downloadUrl={downloadUrl}
+        onRetry={retry}
+        onForceTranscode={source.reason !== "too-large" && !forceTranscode ? triggerForceTranscode : undefined}
+      />
+    )
   }
 
   return (
     <div className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center bg-black p-4">
       <video
-        key={attempt}
+        key={`${attempt}-${source.url}`}
         src={source.url}
         controls
         playsInline
@@ -334,7 +405,7 @@ function VideoPreview({
         onLoadedMetadata={() => setTimedOut(false)}
         onError={event => {
           const code = (event.currentTarget as HTMLVideoElement).error?.code ?? null
-          setMediaError(code)
+          handleVideoError(code)
         }}
       >
         当前浏览器不支持视频播放。

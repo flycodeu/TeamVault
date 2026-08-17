@@ -10,22 +10,26 @@ import { dataPath } from "@/lib/paths"
 /**
  * 视频在线播放兼容服务。
  *
- * 浏览器无法直接解码的封装或编码（如 H.265/HEVC、ProRes、AV1、MOV/MKV 容器等），
- * 通过 FFmpeg 自动转为浏览器可播放的格式：
- * - 编码本身可播放但容器不兼容（如 MOV/MKV 里的 H.264）→ 仅 remux（-c copy 视频流），秒级完成、画质无损；
- * - 编码不兼容（HEVC / ProRes / AV1 等）→ 重编码为 H.264/AAC MP4。
- *
- * 转换结果为磁盘缓存（data/previews/videos/<fileId>.<ext>），首次预览触发异步转换，
- * 客户端轮询 video-playable 接口获取状态；原文件始终保留。
+ * 针对各种视频封装与编码进行智能分流：
+ * 1. 原生硬解直通（DirectPlay）：
+ *    - 现代浏览器支持的标准 H.264/AAC MP4、VP8/VP9 WebM；
+ *    - 前端支持 H.265（HEVC）且为 MP4 容器时，直接直通硬解秒开，0 服务端开销。
+ * 2. 极速转封装（Remux）：
+ *    - 容器不兼容（如 MKV/MOV）但编码兼容时，通过 -c:v copy 秒级生成 MP4/WebM，0 CPU 重编码损耗。
+ * 3. 智能兼容转码（Transcode）：
+ *    - 编码不兼容（ProRes、AV1、老旧设备上的 H.265 等）或 10-bit 色彩时，转为 8-bit H.264/AAC MP4；
+ *    - 限制分辨率最高 1080p（scale='min(1920,iw)':-2）极大加速转码并降低服务器 CPU 负载。
+ * 4. 自动容错降级（Fallback）：
+ *    - 前端直出播放异常时可携带 force=true 强制重新转码并覆盖缓存。
  */
 
 const CONVERTED_DIR = () => dataPath("previews", "videos")
 const MAX_CONVERT_MB = Number(process.env.TEAMVAULT_VIDEO_CONVERT_MAX_MB) || 1024
 const FAILURE_MEMORY_MS = 10 * 60 * 1000
 const MAX_CONCURRENT = 2
-const PROBE_ANALYZE_US = 20_000_000 // 20s 分析上限，避免 moov 在文件尾部时长时间扫描
+const PROBE_ANALYZE_US = 20_000_000 // 20s 分析上限
 
-type ProbeStream = { codec?: string }
+type ProbeStream = { codec?: string; pix_fmt?: string }
 type ProbeResult = {
   container?: string
   video?: ProbeStream
@@ -39,10 +43,6 @@ export type VideoPlayableStatus =
   | { status: "converting" } // 转换进行中
   | { status: "failed"; reason: "too-large" | "convert-error" | "probe-error"; maxMb?: number }
 
-const PLAYABLE_VIDEO_BY_CONTAINER: Record<string, Set<string>> = {
-  mp4: new Set(["h264", "vp9"]),
-  webm: new Set(["vp8", "vp9"]),
-}
 const PLAYABLE_AUDIO = new Set(["aac", "mp3", "opus", "vorbis"])
 
 function convertedVideoPath(fileId: string) {
@@ -60,8 +60,15 @@ function probeFile(filePath: string): Promise<ProbeResult> {
   return new Promise((resolve, reject) => {
     const proc = spawn(
       "ffprobe",
-      ["-v", "error", "-analyzeduration", String(PROBE_ANALYZE_US), "-probesize", "100M",
-        "-print_format", "json", "-show_format", "-show_streams", filePath],
+      [
+        "-v", "error",
+        "-analyzeduration", String(PROBE_ANALYZE_US),
+        "-probesize", "100M",
+        "-print_format", "json",
+        "-show_format",
+        "-show_streams",
+        filePath,
+      ],
       { stdio: ["ignore", "pipe", "pipe"] },
     )
     let stdout = ""
@@ -82,7 +89,7 @@ function probeFile(filePath: string): Promise<ProbeResult> {
         resolve({
           container: typeof format.format_name === "string" ? format.format_name.split(",")[0] : undefined,
           duration: Number.isFinite(Number(format.duration)) ? Number(format.duration) : undefined,
-          video: video ? { codec: video.codec_name } : undefined,
+          video: video ? { codec: video.codec_name, pix_fmt: video.pix_fmt } : undefined,
           audio: audio ? { codec: audio.codec_name } : undefined,
         })
       } catch {
@@ -92,14 +99,30 @@ function probeFile(filePath: string): Promise<ProbeResult> {
   })
 }
 
-/** 按「扩展名 + 实际编码」判断浏览器是否可直接播放 */
-function isDirectlyPlayable(extension: string, probe: ProbeResult): boolean {
+/** 按「扩展名 + 实际编码 + 像素格式 + 客户端能力」判断浏览器是否可直接播放 */
+function isDirectlyPlayable(extension: string, probe: ProbeResult, supportsHevc = false): boolean {
   const ext = extension.toLowerCase()
-  const allowedVideos = PLAYABLE_VIDEO_BY_CONTAINER[ext]
-  if (!allowedVideos) return false
-  if (!probe.video?.codec || !allowedVideos.has(probe.video.codec)) return false
+  const videoCodec = probe.video?.codec
+  if (!videoCodec) return false
+
+  // 音频必须是浏览器常用可直接解码格式（排除 DTS/AC3/EAC3 等需转码的音轨）
   if (probe.audio?.codec && !PLAYABLE_AUDIO.has(probe.audio.codec)) return false
-  return true
+
+  if (ext === "webm") {
+    return videoCodec === "vp8" || videoCodec === "vp9"
+  }
+
+  if (ext === "mp4") {
+    if (videoCodec === "h264") {
+      // 10-bit H.264 大多数浏览器原生硬解无法播放，需走转码
+      if (probe.video?.pix_fmt?.includes("10")) return false
+      return true
+    }
+    if (videoCodec === "vp9") return true
+    if (videoCodec === "hevc" && supportsHevc) return true
+  }
+
+  return false
 }
 
 type ProbeMarker = { storagePath: string; probe: ProbeResult; at: number }
@@ -138,8 +161,11 @@ function releaseSlot() {
 }
 
 /** 编码可播放但容器不兼容 → 仅 remux（复制视频流，必要时转音频） */
-function remuxArgs(input: string, output: string, probe: ProbeResult, outputExt: "mp4" | "webm") {
+function remuxArgs(input: string, output: string, probe: ProbeResult, outputExt: "mp4" | "webm", isHevc = false) {
   const args = ["-y", "-v", "error", "-i", input, "-map", "0:v:0", "-map", "0:a?", "-c:v", "copy"]
+  if (isHevc && outputExt === "mp4") {
+    args.push("-tag:v", "hvc1")
+  }
   const audioCodec = probe.audio?.codec
   if (audioCodec && (outputExt === "mp4" ? ["aac", "mp3", "opus"].includes(audioCodec) : ["opus", "vorbis"].includes(audioCodec))) {
     args.push("-c:a", "copy")
@@ -150,20 +176,28 @@ function remuxArgs(input: string, output: string, probe: ProbeResult, outputExt:
   return args
 }
 
-/** 编码不兼容 → 重编码为 H.264/AAC MP4 */
+/** 编码不兼容或客户端无法硬解 → 重编码为 1080p 兼容性 H.264/AAC MP4 */
 function transcodeArgs(input: string, output: string) {
   return [
     "-y", "-v", "error", "-i", input,
     "-map", "0:v:0", "-map", "0:a?",
+    "-vf", "scale='min(1920,iw)':-2",
     "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
     "-c:a", "aac", "-b:a", "128k",
     "-movflags", "+faststart", "-threads", "0", "-f", "mp4", output,
   ]
 }
 
-function startConversion(fileId: string, storagePath: string, probe: ProbeResult): Promise<void> {
+function startConversion(
+  fileId: string,
+  storagePath: string,
+  probe: ProbeResult,
+  forceTranscode = false,
+  supportsHevc = false,
+): Promise<void> {
   const input = path.resolve(storagePath)
-  const outputExt: "mp4" | "webm" = probe.video?.codec === "vp8" || probe.video?.codec === "vp9" ? "webm" : "mp4"
+  const isVp = !forceTranscode && (probe.video?.codec === "vp8" || probe.video?.codec === "vp9")
+  const outputExt: "mp4" | "webm" = isVp ? "webm" : "mp4"
   const targets = convertedVideoPath(fileId)
   const output = targets[outputExt]
   const temp = `${output}.${randomUUID()}.tmp`
@@ -172,10 +206,17 @@ function startConversion(fileId: string, storagePath: string, probe: ProbeResult
     void (async () => {
       await fs.mkdir(CONVERTED_DIR(), { recursive: true }).catch(() => {})
       await acquireSlot()
-      const args =
-        probe.video?.codec && ["h264", "vp8", "vp9"].includes(probe.video.codec)
-          ? remuxArgs(input, temp, probe, outputExt)
-          : transcodeArgs(input, temp)
+
+      let args: string[]
+      const codec = probe.video?.codec
+      if (!forceTranscode && codec && ["h264", "vp8", "vp9"].includes(codec)) {
+        args = remuxArgs(input, temp, probe, outputExt)
+      } else if (!forceTranscode && codec === "hevc" && supportsHevc) {
+        args = remuxArgs(input, temp, probe, outputExt, true)
+      } else {
+        args = transcodeArgs(input, temp)
+      }
+
       const proc = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] })
       let stderr = ""
       proc.stderr.on("data", chunk => {
@@ -205,9 +246,16 @@ function startConversion(fileId: string, storagePath: string, probe: ProbeResult
   })
 }
 
-async function convertOrStart(fileId: string, storagePath: string, size: number, probe: ProbeResult): Promise<VideoPlayableStatus> {
+async function convertOrStart(
+  fileId: string,
+  storagePath: string,
+  size: number,
+  probe: ProbeResult,
+  forceTranscode = false,
+  supportsHevc = false,
+): Promise<VideoPlayableStatus> {
   const lastFailure = failedAt.get(fileId)
-  if (lastFailure && Date.now() - lastFailure < FAILURE_MEMORY_MS) {
+  if (!forceTranscode && lastFailure && Date.now() - lastFailure < FAILURE_MEMORY_MS) {
     return { status: "failed", reason: "convert-error" }
   }
   if (runningJobs.has(fileId)) return { status: "converting" }
@@ -216,7 +264,12 @@ async function convertOrStart(fileId: string, storagePath: string, size: number,
     return { status: "failed", reason: "too-large", maxMb: MAX_CONVERT_MB }
   }
 
-  const job = startConversion(fileId, storagePath, probe)
+  // 强制转码时清除失败记忆
+  if (forceTranscode) {
+    failedAt.delete(fileId)
+  }
+
+  const job = startConversion(fileId, storagePath, probe, forceTranscode, supportsHevc)
     .then(() => {
       runningJobs.delete(fileId)
       failedAt.delete(fileId)
@@ -235,36 +288,42 @@ export async function getVideoPlayableStatus(opts: {
   storagePath: string
   extension: string | null
   size: number
+  supportsHevc?: boolean
+  force?: boolean
 }): Promise<VideoPlayableStatus> {
-  // 1. 已有转码缓存 → 直接可用
   const targets = convertedVideoPath(opts.fileId)
-  if (await fs.access(targets.mp4).then(() => true).catch(() => false)) {
-    return { status: "ready-converted" }
-  }
-  if (await fs.access(targets.webm).then(() => true).catch(() => false)) {
+
+  // 1. 如果已有转码缓存
+  const mp4Exists = await fs.access(targets.mp4).then(() => true).catch(() => false)
+  const webmExists = await fs.access(targets.webm).then(() => true).catch(() => false)
+
+  if (!opts.force && (mp4Exists || webmExists)) {
     return { status: "ready-converted" }
   }
 
-  // 2. 读取探测缓存，命中且文件未变更则跳过 ffprobe
+  // 2. 读取/执行探测
   const marker = await readProbeMarker(opts.fileId)
   let probe = marker && marker.storagePath === opts.storagePath ? marker.probe : null
   if (!probe) {
     try {
       probe = await probeFile(path.resolve(opts.storagePath))
+      await writeProbeMarker(opts.fileId, opts.storagePath, probe).catch(() => {})
     } catch {
       return { status: "failed", reason: "probe-error" }
     }
   }
 
-  // 3. 原文件可直接播放 → 直出
-  if (isDirectlyPlayable(opts.extension ?? "", probe)) {
-    if (marker?.storagePath !== opts.storagePath) {
-      await writeProbeMarker(opts.fileId, opts.storagePath, probe).catch(() => {})
-    }
+  // 3. 非强制转码时，若原文件支持硬解直出，返回 ready-original
+  if (!opts.force && isDirectlyPlayable(opts.extension ?? "", probe, opts.supportsHevc ?? false)) {
     return { status: "ready-original" }
   }
 
-  return convertOrStart(opts.fileId, opts.storagePath, opts.size, probe)
+  // 4. 若强制转码且已存在转码缓存，直接返回已转码状态（若需要重新转码，convertOrStart 会处理）
+  if (opts.force && (mp4Exists || webmExists) && !runningJobs.has(opts.fileId)) {
+    return { status: "ready-converted" }
+  }
+
+  return convertOrStart(opts.fileId, opts.storagePath, opts.size, probe, Boolean(opts.force), Boolean(opts.supportsHevc))
 }
 
 /** 返回已转换缓存文件路径（不存在返回 null） */

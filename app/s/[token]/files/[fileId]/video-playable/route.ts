@@ -8,9 +8,13 @@ import { getShareAccess } from "@/lib/share/access"
 import { isShareFileAllowed } from "@/lib/share/file-access"
 import { getVideoPlayableStatus } from "@/lib/video/preview"
 
-/** 外部分享：查询视频可播放状态（遵守 allowPreview，不检查 allowDownload） */
-export async function GET(_request: Request, { params }: { params: Promise<{ token: string; fileId: string }> }) {
+/** 外部分享：查询视频可播放状态（遵守 allowPreview，支持 hevc 与 force 参数） */
+export async function GET(request: Request, { params }: { params: Promise<{ token: string; fileId: string }> }) {
   const { token, fileId } = await params
+  const url = new URL(request.url)
+  const supportsHevc = url.searchParams.get("hevc") === "1"
+  const force = url.searchParams.get("force") === "1"
+
   const access = await getShareAccess(token)
   const file = await db.query.files.findFirst({ where: eq(files.id, fileId) })
   if (!access || !file || !isShareFileAllowed(access.share, file, "preview")) {
@@ -22,6 +26,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     storagePath: safeStoragePath(file.storagePath),
     extension: file.extension,
     size: file.size,
+    supportsHevc,
+    force,
   })
   return NextResponse.json(status)
 }

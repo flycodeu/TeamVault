@@ -8,12 +8,16 @@ import { canViewFile } from "@/lib/permission"
 import { safeStoragePath } from "@/lib/storage/files"
 import { getVideoPlayableStatus } from "@/lib/video/preview"
 
-/** 查询视频可播放状态：原文件直出 / 转码缓存就绪 / 转换中 / 失败（失败原因用于提示） */
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+/** 查询视频可播放状态：原文件直出 / 转码缓存就绪 / 转换中 / 失败（支持 hevc 与 force 参数） */
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ success: false, error: "未登录" }, { status: 401 })
 
   const { id } = await params
+  const url = new URL(request.url)
+  const supportsHevc = url.searchParams.get("hevc") === "1"
+  const force = url.searchParams.get("force") === "1"
+
   const result = await db
     .select({ file: files, resource: resources })
     .from(files)
@@ -30,6 +34,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     storagePath: safeStoragePath(row.file.storagePath),
     extension: row.file.extension,
     size: row.file.size,
+    supportsHevc,
+    force,
   })
   return NextResponse.json(status)
 }

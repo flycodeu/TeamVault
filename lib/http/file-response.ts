@@ -1,8 +1,7 @@
 import "server-only"
 
-import { createReadStream } from "node:fs"
+import { createReadStream, type ReadStream } from "node:fs"
 import fs from "node:fs/promises"
-import { Readable } from "node:stream"
 
 type FileResponseOptions = {
   contentType: string
@@ -27,6 +26,83 @@ function baseHeaders(size: number, options: FileResponseOptions) {
   }
 }
 
+/**
+ * 将 Node.js 文件流安全转换为 Web ReadableStream。
+ *
+ * 避免浏览器在视频 Range 分片请求、快进/跳转或客户端提前中断 TCP 连接时，
+ * 触发 `TypeError: Invalid state: Controller is already closed (ERR_INVALID_STATE)` 异常。
+ */
+function createSafeWebStream(stream: ReadStream, signal?: AbortSignal): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      let isDone = false
+
+      const safeCleanup = () => {
+        if (isDone) return
+        isDone = true
+        stream.removeAllListeners()
+        if (!stream.destroyed) {
+          stream.destroy()
+        }
+      }
+
+      if (signal) {
+        if (signal.aborted) {
+          safeCleanup()
+          return
+        }
+        signal.addEventListener("abort", () => {
+          safeCleanup()
+        }, { once: true })
+      }
+
+      stream.on("data", chunk => {
+        if (isDone) return
+        try {
+          controller.enqueue(typeof chunk === "string" ? Buffer.from(chunk) : chunk)
+          if (controller.desiredSize !== null && controller.desiredSize <= 0) {
+            stream.pause()
+          }
+        } catch {
+          safeCleanup()
+        }
+      })
+
+      stream.on("end", () => {
+        if (isDone) return
+        isDone = true
+        try {
+          controller.close()
+        } catch {
+          // 忽略已关闭状态
+        }
+      })
+
+      stream.on("error", err => {
+        if (isDone) return
+        isDone = true
+        try {
+          controller.error(err)
+        } catch {
+          // 忽略已关闭状态
+        }
+      })
+
+      stream.on("close", () => {
+        isDone = true
+      })
+    },
+    pull() {
+      stream.resume()
+    },
+    cancel() {
+      if (!stream.destroyed) {
+        stream.destroy()
+      }
+    },
+  })
+}
+
 export async function fileResponse(request: Request, filePath: string, options: FileResponseOptions) {
   const stats = await fs.stat(filePath)
   const headers = baseHeaders(stats.size, options)
@@ -34,7 +110,7 @@ export async function fileResponse(request: Request, filePath: string, options: 
 
   if (!range) {
     const stream = createReadStream(filePath)
-    return new Response(Readable.toWeb(stream) as ReadableStream, { headers })
+    return new Response(createSafeWebStream(stream, request.signal), { headers })
   }
 
   const match = /^bytes=(\d*)-(\d*)$/.exec(range.trim())
@@ -72,7 +148,7 @@ export async function fileResponse(request: Request, filePath: string, options: 
 
   const length = end - start + 1
   const stream = createReadStream(filePath, { start, end })
-  return new Response(Readable.toWeb(stream) as ReadableStream, {
+  return new Response(createSafeWebStream(stream, request.signal), {
     status: 206,
     headers: {
       ...headers,
