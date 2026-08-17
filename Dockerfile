@@ -1,5 +1,16 @@
 FROM node:22-bookworm-slim AS dependencies
 WORKDIR /app
+
+# better-sqlite3 等原生 Node 模块在没有可用预编译包时会通过 node-gyp 编译。
+# 编译工具只保留在 dependencies 阶段，不会进入最终 runner 镜像。
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    python3 \
+    build-essential \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV PYTHON=/usr/bin/python3
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
