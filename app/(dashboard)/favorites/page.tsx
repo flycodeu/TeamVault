@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, or } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, like, or } from "drizzle-orm"
 import { Heart, Plus, Search, X } from "lucide-react"
 import Link from "next/link"
 
@@ -40,6 +40,7 @@ export default async function FavoritesPage({
       ? and(
           eq(resourceFavorites.userId, user.id),
           inArray(resourceFavorites.resourceId, permittedIds),
+          isNull(resources.deletedAt),
           searchFilter,
         )
       : undefined

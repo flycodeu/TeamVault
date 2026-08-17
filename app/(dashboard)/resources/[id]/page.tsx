@@ -67,10 +67,7 @@ export default async function ResourceDetailPage({ params }: { params: Promise<{
   const { id } = await params
   const resource = await db.query.resources.findFirst({ where: and(eq(resources.id, id), isNull(resources.deletedAt)) })
   if (!resource || !(await canViewResource(id))) notFound()
-  if (resource.moduleKind === "WEBSITE") {
-    redirect(`/websites/${id}`)
-  }
-  const isWebsite = false
+  const isWebsite = resource.moduleKind === "WEBSITE" || resource.type === "WEBSITE"
 
   const [currentUser, mayViewFiles, mayEdit, mayShare] = await Promise.all([
     getCurrentUser(),

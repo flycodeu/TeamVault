@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, or } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, like, or } from "drizzle-orm"
 import {
   FileArchive,
   FileCode2,
@@ -49,7 +49,7 @@ export default async function FilesPage({
     : undefined
 
   const where = permittedIds.length
-    ? and(inArray(files.resourceId, permittedIds), searchFilter)
+    ? and(inArray(files.resourceId, permittedIds), isNull(resources.deletedAt), searchFilter)
     : undefined
 
   const allRows = where

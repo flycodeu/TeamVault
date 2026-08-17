@@ -1,6 +1,6 @@
 import "server-only"
 
-import { and, eq, inArray, or } from "drizzle-orm"
+import { and, eq, inArray, isNull, or } from "drizzle-orm"
 
 import { getCurrentUser } from "@/lib/auth/session"
 import { db } from "@/lib/db"
@@ -145,7 +145,7 @@ export async function listPermittedResourceIds(permission: ResourcePermission) {
     moduleKind: resources.moduleKind,
     type: resources.type,
     visibility: resources.visibility,
-  }).from(resources).where(eq(resources.status, "ACTIVE"))
+  }).from(resources).where(and(eq(resources.status, "ACTIVE"), isNull(resources.deletedAt)))
 
   if (user.isAdmin) {
     return activeResources.map(r => r.id)

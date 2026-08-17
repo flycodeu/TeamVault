@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, or } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, like, or } from "drizzle-orm"
 import { ArrowRight, FolderKey, KeyRound, Search, User, X } from "lucide-react"
 import Link from "next/link"
 
@@ -41,7 +41,7 @@ export default async function CredentialsPage({
     : undefined
 
   const where = permittedIds.length
-    ? and(inArray(credentials.id, permittedIds), searchFilter)
+    ? and(inArray(credentials.id, permittedIds), isNull(resources.deletedAt), searchFilter)
     : undefined
 
   const allFiltered = where
