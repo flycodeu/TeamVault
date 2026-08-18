@@ -14,6 +14,8 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 
+import { copyToClipboard } from "@/lib/utils"
+
 const typeLabels: Record<string, string> = {
   PASSWORD: "账号密码",
   API_KEY: "API 密钥",
@@ -55,9 +57,11 @@ export function GuestCredentialList({
   }
 
   async function copyText(key: string, text: string) {
-    await navigator.clipboard.writeText(text)
-    setCopiedKey(key)
-    setTimeout(() => setCopiedKey(null), 1600)
+    const ok = await copyToClipboard(text)
+    if (ok) {
+      setCopiedKey(key)
+      setTimeout(() => setCopiedKey(null), 1600)
+    }
   }
 
   async function copyAllCredInfo(cred: DecryptedGuestCredential) {
@@ -75,9 +79,11 @@ export function GuestCredentialList({
     if (cred.description) {
       lines.push(`说明: ${cred.description}`)
     }
-    await navigator.clipboard.writeText(lines.join("\n"))
-    setCopiedKey(`all-${cred.id}`)
-    setTimeout(() => setCopiedKey(null), 2000)
+    const ok = await copyToClipboard(lines.join("\n"))
+    if (ok) {
+      setCopiedKey(`all-${cred.id}`)
+      setTimeout(() => setCopiedKey(null), 2000)
+    }
   }
 
   return (

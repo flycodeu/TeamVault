@@ -5,7 +5,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { requireAdminUser } from "@/lib/auth/guards"
 import { db } from "@/lib/db"
 import { auditLogs, users } from "@/lib/db/schema"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { AuditCleanup } from "@/components/audit/audit-cleanup"
 
 const pageSize = 20
@@ -84,7 +84,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
                     className="p-4 transition hover:bg-muted/20 md:grid md:grid-cols-[1.3fr_1fr_1fr_1fr_1.5fr] md:items-center md:gap-4 md:px-5 md:py-3.5"
                   >
                     <div className="font-mono text-xs text-muted-foreground">
-                      {log.createdAt.toLocaleString("zh-CN")}
+                      {formatDateTime(log.createdAt)}
                     </div>
                     <div className="mt-2 text-xs font-semibold text-foreground md:mt-0">
                       {displayName ?? "未知或系统"}

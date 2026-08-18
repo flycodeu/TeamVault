@@ -26,6 +26,7 @@ import { ShareForm } from "@/components/share/share-form"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser } from "@/lib/auth/session"
 import { getResourceActiveShares } from "@/lib/share/actions"
+import { formatDate } from "@/lib/utils"
 import { db } from "@/lib/db"
 import {
   credentialPermissions,
@@ -399,7 +400,7 @@ export default async function ResourceDetailPage({
               <span>创建者: {owner?.displayName ?? "未知"}</span>
               <span className="flex items-center gap-1">
                 <Calendar className="size-3" />
-                更新于 {resource.updatedAt.toLocaleDateString("zh-CN")}
+                更新于 {formatDate(resource.updatedAt)}
               </span>
             </div>
           </div>

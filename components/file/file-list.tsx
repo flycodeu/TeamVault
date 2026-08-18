@@ -44,7 +44,7 @@ import { Label } from "@/components/ui/label"
 import type { FileRecord } from "@/lib/db/schema"
 import { batchDeleteFiles, deleteFile, deleteFolder, moveFiles, renameFolder } from "@/lib/file/actions"
 import { fileKindMeta, fileKindOrder, getFileKind, getPreviewKind } from "@/lib/file/kinds"
-import { cn } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import { FileActions } from "./file-actions"
 import { FilePreviewModal } from "./file-preview-modal"
 import { FileUploader } from "./file-uploader"
@@ -826,7 +826,7 @@ function DocumentList({
                 <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
                   <span>{formatSize(file.size)}</span>
                   <span>·</span>
-                  <span>{file.createdAt ? new Date(file.createdAt).toLocaleDateString() : ""}</span>
+                  <span>{formatDate(file.createdAt)}</span>
                   {file.previewStatus === "PROCESSING" ? (
                     <span className="text-amber-500 font-sans font-medium flex items-center gap-1">
                       <RefreshCw className="size-2.5 animate-spin" /> 生成预览中

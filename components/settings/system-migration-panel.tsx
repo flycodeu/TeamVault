@@ -32,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import type { BackupInspectionResult, BackupManifest, SystemStats } from "@/lib/system/backup"
-import { cn } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 
 function formatBytes(bytes: number) {
   if (!bytes || bytes <= 0) return "0 B"
@@ -399,7 +399,7 @@ export function SystemMigrationPanel({ initialStats }: { initialStats: SystemSta
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">备份生成时间:</span>
                   <span className="font-mono font-medium text-foreground">
-                    {new Date(inspection.manifest.exportedAt).toLocaleString("zh-CN")}
+                    {formatDateTime(inspection.manifest.exportedAt)}
                   </span>
                 </div>
                 <div className="flex justify-between">

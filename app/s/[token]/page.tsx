@@ -20,6 +20,7 @@ import { db } from "@/lib/db"
 import { credentials, files, resourceLinks, resources, shares } from "@/lib/db/schema"
 import { consumeShare } from "@/lib/share/access"
 import { hashShareToken, verifyShareAccessProof } from "@/lib/share/token"
+import { formatDate } from "@/lib/utils"
 import {
   DecryptedGuestCredential,
   GuestCredentialList,
@@ -323,7 +324,7 @@ function ShareShell({
         {share?.expiresAt ? (
           <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <Clock className="size-3 text-muted-foreground" />
-            有效至 {share.expiresAt.toLocaleDateString("zh-CN")}
+            有效至 {formatDate(share.expiresAt)}
           </span>
         ) : null}
       </div>

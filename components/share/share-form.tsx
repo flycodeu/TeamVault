@@ -27,7 +27,7 @@ import {
   createResourceShare,
   revokeShare,
 } from "@/lib/share/actions"
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard, formatDate } from "@/lib/utils"
 
 export type ActiveShareItem = {
   id: string
@@ -250,9 +250,11 @@ export function ShareForm({
     }
     lines.push(`💡 说明: 打开交付包链接即可查阅全部登录账号、密码明文与配套文件`)
 
-    await navigator.clipboard.writeText(lines.join("\n"))
-    setCopiedType("full")
-    setTimeout(() => setCopiedType(null), 2000)
+    const ok = await copyToClipboard(lines.join("\n"))
+    if (ok) {
+      setCopiedType("full")
+      setTimeout(() => setCopiedType(null), 2000)
+    }
   }
 
   // 2. Short Link Copy Text
@@ -266,17 +268,21 @@ export function ShareForm({
     if (generatedResult.password) {
       lines.push(`提取码: ${generatedResult.password}`)
     }
-    await navigator.clipboard.writeText(lines.join("\n"))
-    setCopiedType("short")
-    setTimeout(() => setCopiedType(null), 2000)
+    const ok = await copyToClipboard(lines.join("\n"))
+    if (ok) {
+      setCopiedType("short")
+      setTimeout(() => setCopiedType(null), 2000)
+    }
   }
 
   // 3. Direct Website URL Copy
   async function copyTargetUrl() {
     if (!resourceUrl) return
-    await navigator.clipboard.writeText(resourceUrl)
-    setCopiedType("direct")
-    setTimeout(() => setCopiedType(null), 2000)
+    const ok = await copyToClipboard(resourceUrl)
+    if (ok) {
+      setCopiedType("direct")
+      setTimeout(() => setCopiedType(null), 2000)
+    }
   }
 
   const [shareToRevoke, setShareToRevoke] = useState<string | null>(null)
@@ -806,7 +812,7 @@ export function ShareForm({
                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                       <span>已访问: {share.viewCount} 次</span>
                       {share.expiresAt ? (
-                        <span>到期: {new Date(share.expiresAt).toLocaleDateString("zh-CN")}</span>
+                        <span>到期: {formatDate(share.expiresAt)}</span>
                       ) : (
                         <span>永久有效</span>
                       )}

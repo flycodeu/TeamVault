@@ -16,6 +16,7 @@ import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { revealCredential } from "@/lib/credential/actions"
 import type { Credential } from "@/lib/db/schema"
+import { copyToClipboard } from "@/lib/utils"
 
 export type WebsiteCredentialDetail = Credential & {
   isPermitted: boolean
@@ -34,9 +35,11 @@ export function WebsiteCredentialItem({
 
   async function handleCopyUser() {
     if (!credential.username) return
-    await navigator.clipboard.writeText(credential.username)
-    setCopiedUser(true)
-    setTimeout(() => setCopiedUser(false), 1500)
+    const ok = await copyToClipboard(credential.username)
+    if (ok) {
+      setCopiedUser(true)
+      setTimeout(() => setCopiedUser(false), 1500)
+    }
   }
 
   async function handleCopyPass() {
@@ -50,9 +53,11 @@ export function WebsiteCredentialItem({
         }
       }
       if (secret) {
-        await navigator.clipboard.writeText(secret)
-        setCopiedPass(true)
-        setTimeout(() => setCopiedPass(false), 1500)
+        const ok = await copyToClipboard(secret)
+        if (ok) {
+          setCopiedPass(true)
+          setTimeout(() => setCopiedPass(false), 1500)
+        }
       }
     })
   }

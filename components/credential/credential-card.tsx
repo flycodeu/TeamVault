@@ -20,7 +20,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { deleteCredential, revealCredential } from "@/lib/credential/actions"
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 import { CredentialAccessEditor } from "./credential-access-editor"
 import { CredentialEdit } from "./credential-edit"
 import type { CredentialSubjectGrant } from "./credential-subject-picker"
@@ -53,20 +53,20 @@ const typeLabels: Record<string, string> = {
 
 export function CredentialCard({ credential, mayEdit, subjects, accessGrants }: CredentialCardProps) {
   const router = useRouter()
-  const [visible, setVisible] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editingAccess, setEditingAccess] = useState(false)
-  const [secret, setSecret] = useState("")
+  const [secret, setSecret] = useState<string | null>(null)
   const [extra, setExtra] = useState<string | null>(null)
+  const [visible, setVisible] = useState(false)
   const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [copiedSecret, setCopiedSecret] = useState(false)
   const [copiedUsername, setCopiedUsername] = useState(false)
   const [copiedExtra, setCopiedExtra] = useState(false)
-  const [error, setError] = useState("")
 
   async function reveal() {
     setPending(true)
-    setError("")
+    setError(null)
     const result = await revealCredential(credential.id)
     if (result.success) {
       setSecret(result.data.secret)
@@ -81,12 +81,14 @@ export function CredentialCard({ credential, mayEdit, subjects, accessGrants }: 
   async function copySecret() {
     const result = await revealCredential(credential.id, true)
     if (result.success) {
-      await navigator.clipboard.writeText(result.data.secret)
+      const ok = await copyToClipboard(result.data.secret)
       setSecret(result.data.secret)
       setExtra(result.data.extra)
       setVisible(true)
-      setCopiedSecret(true)
-      setTimeout(() => setCopiedSecret(false), 1600)
+      if (ok) {
+        setCopiedSecret(true)
+        setTimeout(() => setCopiedSecret(false), 1600)
+      }
     } else {
       setError(result.error)
     }
@@ -96,16 +98,20 @@ export function CredentialCard({ credential, mayEdit, subjects, accessGrants }: 
 
   async function copyUsername() {
     if (!credential.username) return
-    await navigator.clipboard.writeText(credential.username)
-    setCopiedUsername(true)
-    setTimeout(() => setCopiedUsername(false), 1600)
+    const ok = await copyToClipboard(credential.username)
+    if (ok) {
+      setCopiedUsername(true)
+      setTimeout(() => setCopiedUsername(false), 1600)
+    }
   }
 
   async function copyExtra() {
     if (!extra) return
-    await navigator.clipboard.writeText(extra)
-    setCopiedExtra(true)
-    setTimeout(() => setCopiedExtra(false), 1600)
+    const ok = await copyToClipboard(extra)
+    if (ok) {
+      setCopiedExtra(true)
+      setTimeout(() => setCopiedExtra(false), 1600)
+    }
   }
 
   async function handleConfirmDelete() {

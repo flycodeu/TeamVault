@@ -25,6 +25,7 @@ FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV TZ=Asia/Shanghai
 ENV TEAMVAULT_DATABASE_PATH=/app/data/teamvault.db
 ENV TEAMVAULT_APP_ROOT=/app
 

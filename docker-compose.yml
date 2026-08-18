@@ -14,5 +14,6 @@ services:
       TEAMVAULT_ADMIN_USERNAME: ${TEAMVAULT_ADMIN_USERNAME:-admin}
       TEAMVAULT_ADMIN_DISPLAY_NAME: ${TEAMVAULT_ADMIN_DISPLAY_NAME:-TeamVault Admin}
       TEAMVAULT_ADMIN_PASSWORD: ${TEAMVAULT_ADMIN_PASSWORD}
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./data:/app/data

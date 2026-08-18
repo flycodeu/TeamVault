@@ -26,7 +26,7 @@ import { ResourceFavoriteButton } from "@/components/resource/resource-favorite-
 import { Button } from "@/components/ui/button"
 import { revealCredential } from "@/lib/credential/actions"
 import type { Resource } from "@/lib/db/schema"
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 import { WebsiteCard, type WebsiteWithCredentials } from "./website-card"
 import { WebsiteImportDialog } from "./website-import-dialog"
 
@@ -45,7 +45,7 @@ export function WebsiteListView({
 }: {
   websites: WebsiteWithCredentials[]
   favoriteIds: string[]
-  currentUserId?: string
+  currentUserId: string
   isAdmin?: boolean
 }) {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
@@ -59,9 +59,11 @@ export function WebsiteListView({
 
   async function handleCopyUser(username: string, credId: string) {
     if (!username) return
-    await navigator.clipboard.writeText(username)
-    setCopiedUser(credId)
-    setTimeout(() => setCopiedUser(null), 1500)
+    const ok = await copyToClipboard(username)
+    if (ok) {
+      setCopiedUser(credId)
+      setTimeout(() => setCopiedUser(null), 1500)
+    }
   }
 
   async function handleCopyPassword(credId: string) {
@@ -75,9 +77,11 @@ export function WebsiteListView({
         }
       }
       if (secret) {
-        await navigator.clipboard.writeText(secret)
-        setCopiedPass(credId)
-        setTimeout(() => setCopiedPass(null), 1500)
+        const ok = await copyToClipboard(secret)
+        if (ok) {
+          setCopiedPass(credId)
+          setTimeout(() => setCopiedPass(null), 1500)
+        }
       }
     })
   }

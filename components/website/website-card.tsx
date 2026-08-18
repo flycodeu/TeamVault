@@ -25,6 +25,7 @@ import { QuickShareDialog } from "@/components/share/quick-share-dialog"
 import { Button } from "@/components/ui/button"
 import { revealCredential } from "@/lib/credential/actions"
 import type { Credential, Resource } from "@/lib/db/schema"
+import { copyToClipboard } from "@/lib/utils"
 
 export type WebsiteWithCredentials = Resource & {
   credentials: (Credential & {
@@ -59,9 +60,11 @@ export function WebsiteCard({
 
   async function handleCopyUser(username: string, credId: string) {
     if (!username) return
-    await navigator.clipboard.writeText(username)
-    setCopiedUser(credId)
-    setTimeout(() => setCopiedUser(null), 1500)
+    const ok = await copyToClipboard(username)
+    if (ok) {
+      setCopiedUser(credId)
+      setTimeout(() => setCopiedUser(null), 1500)
+    }
   }
 
   async function handleCopyPassword(credId: string) {
@@ -75,9 +78,11 @@ export function WebsiteCard({
         }
       }
       if (secret) {
-        await navigator.clipboard.writeText(secret)
-        setCopiedPass(credId)
-        setTimeout(() => setCopiedPass(null), 1500)
+        const ok = await copyToClipboard(secret)
+        if (ok) {
+          setCopiedPass(credId)
+          setTimeout(() => setCopiedPass(null), 1500)
+        }
       }
     })
   }
