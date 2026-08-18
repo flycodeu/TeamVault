@@ -73,7 +73,7 @@ TeamVault 面向小组内部场景，把散落在各处的东西收拢进「资�
 |---|---|---|
 | ![备忘](docs/screenshots/memos.png) | ![审计](docs/screenshots/audit.png) | ![设置](docs/screenshots/settings.png) |
 
-> 在线预览采用浏览器端只读方案，不依赖 LibreOffice 与在线编辑服务；超限文件（如 PPTX > 50MB）会明确降级为下载。视频优先支持 MP4（H.264/AAC）与 WebM（VP8/VP9/Opus）；MOV / MKV / AVI 及 H.265、ProRes、AV1 等不兼容封装或编码，首次预览时由 FFmpeg 自动转码（容器不兼容仅 remux、编码不兼容重编码为 H.264/AAC），转换完成后自动播放，原文件始终保留；超大文件（默认 >1GB）提示下载后用 VLC / PotPlayer 等本地播放器查看。
+> 在线预览采用浏览器端原生只读方案，不依赖 LibreOffice、FFmpeg 或任何外部第三方转换服务，极速轻量；超限文件（如 PPTX > 50MB）会明确降级为下载。视频支持浏览器可直接播放的标准格式（MP4、WebM 等）；不兼容的封装格式可一键下载后使用本地播放器（如 VLC / PotPlayer 等）查看。
 
 ## 🏗️ 系统架构
 

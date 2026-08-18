@@ -53,7 +53,7 @@ if command -v docker >/dev/null 2>&1 && [ -f "docker-compose.yml" ]; then
   chown -R 1001:1001 data 2>/dev/null || true
 
   echo "🔨 正在构建最新版本镜像..."
-  docker compose build --no-cache teamvault
+  docker compose build teamvault
 
   echo "🔄 正在重启并应用新版本容器（容器入口将自动执行数据库迁移与管理员引导）..."
   docker compose up -d teamvault
