@@ -9,8 +9,10 @@ import {
   Folder,
   Globe2,
   KeyRound,
+  Link2,
   RefreshCw,
   Share2,
+  Sparkles,
   Trash2,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -48,15 +50,21 @@ export type ActiveShareItem = {
 export function ShareForm({
   resourceId,
   resourceName,
+  resourceUrl,
+  links = [],
   files,
   credentials = [],
   activeShares = [],
+  onSuccess,
 }: {
   resourceId: string
   resourceName: string
+  resourceUrl?: string | null
+  links?: Array<{ id: string; title: string; url: string; kind?: string }>
   files: Array<{ id: string; name: string; folder?: string | null }>
-  credentials?: Array<{ id: string; name: string; type: string; username: string | null }>
+  credentials?: Array<{ id: string; name: string; type: string; username: string | null; linkId?: string | null }>
   activeShares?: ActiveShareItem[]
+  onSuccess?: (result: { token: string; url: string; password?: string }) => void
 }) {
   const router = useRouter()
   const [shareTarget, setShareTarget] = useState<"package" | "file">("package")
@@ -96,7 +104,7 @@ export function ShareForm({
     url: string
     password?: string
   } | null>(null)
-  const [copiedHandover, setCopiedHandover] = useState(false)
+  const [copiedType, setCopiedType] = useState<"full" | "short" | "direct" | null>(null)
   const [revokingId, setRevokingId] = useState<string | null>(null)
 
   function generateRandomPassword() {
@@ -174,11 +182,13 @@ export function ShareForm({
         setError(result.error)
       } else {
         const fullUrl = `${window.location.origin}/s/${result.data.token}`
-        setGeneratedResult({
+        const resObj = {
           token: result.data.token,
           url: fullUrl,
           password: password.trim() || undefined,
-        })
+        }
+        setGeneratedResult(resObj)
+        onSuccess?.(resObj)
         router.refresh()
       }
     } else {
@@ -197,32 +207,76 @@ export function ShareForm({
         setError(result.error)
       } else {
         const fullUrl = `${window.location.origin}/s/${result.data.token}`
-        setGeneratedResult({
+        const resObj = {
           token: result.data.token,
           url: fullUrl,
           password: password.trim() || undefined,
-        })
+        }
+        setGeneratedResult(resObj)
+        onSuccess?.(resObj)
         router.refresh()
       }
     }
     setPending(false)
   }
 
-  async function copyHandoverText() {
+  // 1. Full Handover Copy Text (Includes Target Website URL, Delivery URL, Password, Accounts summary)
+  async function copyFullHandoverText() {
     if (!generatedResult) return
-    const text = [
-      `【${resourceName} - 协作交付包】`,
-      `访问链接: ${generatedResult.url}`,
-      generatedResult.password ? `提取密码: ${generatedResult.password}` : `提取密码: 无需密码 (直接打开)`,
+    const lines = [`【${resourceName} - 外部协作交付包】`]
+    if (resourceUrl) {
+      lines.push(`🌐 目标系统地址: ${resourceUrl}`)
+    }
+    if (links.length > 0) {
+      lines.push(`🔗 相关网站与环境:`)
+      links.forEach(l => lines.push(`  • ${l.title}: ${l.url}`))
+    }
+    lines.push(`🔑 协作交付包: ${generatedResult.url}`)
+    lines.push(
+      generatedResult.password
+        ? `🔒 提取密码: ${generatedResult.password}`
+        : `🔒 提取密码: 无需密码 (直接点击链接访问)`
+    )
+    lines.push(
       expiryDays !== "never"
-        ? `有效期至: ${expiryDays === "custom" ? customExpiryDate : `${expiryDays} 天内有效`}`
-        : `有效期: 长期有效`,
-      `说明: 包含系统访问地址、配套操作手册与登录凭据`,
-    ].join("\n")
+        ? `⏳ 有效期: ${expiryDays === "custom" ? customExpiryDate : `${expiryDays} 天内有效`}`
+        : `⏳ 有效期: 长期有效`
+    )
+    if (includeCredentials && selectedCredentialIds.length > 0) {
+      lines.push(`📋 包含 ${selectedCredentialIds.length} 个账号凭据与密码`)
+    }
+    if (selectedFileIds.length > 0) {
+      lines.push(`📁 包含 ${selectedFileIds.length} 份配套手册与资料文档`)
+    }
+    lines.push(`💡 说明: 打开交付包链接即可查阅全部登录账号、密码明文与配套文件`)
 
-    await navigator.clipboard.writeText(text)
-    setCopiedHandover(true)
-    setTimeout(() => setCopiedHandover(false), 2000)
+    await navigator.clipboard.writeText(lines.join("\n"))
+    setCopiedType("full")
+    setTimeout(() => setCopiedType(null), 2000)
+  }
+
+  // 2. Short Link Copy Text
+  async function copyShortText() {
+    if (!generatedResult) return
+    const lines = [`【${resourceName}】`]
+    if (resourceUrl) {
+      lines.push(`系统地址: ${resourceUrl}`)
+    }
+    lines.push(`交付链接: ${generatedResult.url}`)
+    if (generatedResult.password) {
+      lines.push(`提取码: ${generatedResult.password}`)
+    }
+    await navigator.clipboard.writeText(lines.join("\n"))
+    setCopiedType("short")
+    setTimeout(() => setCopiedType(null), 2000)
+  }
+
+  // 3. Direct Website URL Copy
+  async function copyTargetUrl() {
+    if (!resourceUrl) return
+    await navigator.clipboard.writeText(resourceUrl)
+    setCopiedType("direct")
+    setTimeout(() => setCopiedType(null), 2000)
   }
 
   const [shareToRevoke, setShareToRevoke] = useState<string | null>(null)
@@ -251,7 +305,7 @@ export function ShareForm({
               type="button"
               onClick={() => setShareTarget("package")}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg border p-2.5 text-xs font-semibold transition",
+                "flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-semibold transition",
                 shareTarget === "package"
                   ? "border-primary bg-primary/10 text-primary shadow-xs"
                   : "border-border/80 bg-background text-muted-foreground hover:bg-accent/40",
@@ -264,7 +318,7 @@ export function ShareForm({
               type="button"
               onClick={() => setShareTarget("file")}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg border p-2.5 text-xs font-semibold transition",
+                "flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-semibold transition",
                 shareTarget === "file"
                   ? "border-primary bg-primary/10 text-primary shadow-xs"
                   : "border-border/80 bg-background text-muted-foreground hover:bg-accent/40",
@@ -282,7 +336,7 @@ export function ShareForm({
             <select
               value={selectedFileId}
               onChange={e => setSelectedFileId(e.target.value)}
-              className="h-9 w-full rounded-lg border border-input bg-background px-3 text-xs shadow-xs"
+              className="h-9 w-full rounded-xl border border-input bg-background px-3 text-xs shadow-xs"
             >
               {files.map(file => {
                 const folderPrefix = file.folder && file.folder !== "/" ? `[${file.folder.replace(/^\//, "")}] ` : ""
@@ -295,7 +349,53 @@ export function ShareForm({
             </select>
           </div>
         ) : (
-          <div className="space-y-3.5 rounded-xl border border-border/80 bg-card/60 p-4">
+          <div className="space-y-3.5 rounded-2xl border border-border/80 bg-card/60 p-4">
+            {/* System / Website Access Info Preview */}
+            {resourceUrl || links.length ? (
+              <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-foreground">
+                    <Globe2 className="size-4 text-primary" />
+                    <span>系统访问地址（将包含在交付包中）</span>
+                  </div>
+                  {resourceUrl ? (
+                    <a
+                      href={resourceUrl.startsWith("http") ? resourceUrl : `https://${resourceUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                    >
+                      <span>测试直达</span>
+                      <ExternalLink className="size-3" />
+                    </a>
+                  ) : null}
+                </div>
+
+                {resourceUrl ? (
+                  <div className="flex items-center justify-between rounded-lg bg-background/80 px-2.5 py-1.5 border border-border/50">
+                    <span className="font-mono text-xs font-semibold text-primary truncate" title={resourceUrl}>
+                      {resourceUrl}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-medium shrink-0 ml-2">主站点</span>
+                  </div>
+                ) : null}
+
+                {links.length ? (
+                  <div className="space-y-1 pt-1">
+                    <span className="text-[11px] text-muted-foreground font-medium">关联环境与入口 ({links.length}):</span>
+                    <div className="grid gap-1 max-h-24 overflow-y-auto">
+                      {links.map(link => (
+                        <div key={link.id} className="flex items-center justify-between rounded bg-background/60 px-2 py-1 text-[11px] border border-border/40">
+                          <span className="font-medium text-foreground truncate">{link.title}</span>
+                          <span className="font-mono text-muted-foreground truncate max-w-48 ml-2">{link.url}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             {/* Include Credentials Picker */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -329,7 +429,7 @@ export function ShareForm({
                         <label
                           key={c.id}
                           className={cn(
-                            "flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer transition",
+                            "flex items-center justify-between rounded-xl border px-2.5 py-1.5 text-xs cursor-pointer transition",
                             checked
                               ? "border-primary/40 bg-accent/30 font-medium text-foreground"
                               : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40",
@@ -352,7 +452,7 @@ export function ShareForm({
                     })}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-muted-foreground bg-muted/40 p-2 rounded">
+                  <p className="text-[11px] text-muted-foreground bg-muted/40 p-2 rounded-lg">
                     本模块暂未添加任何账号密码，如需交付请先在「账号凭据」添加。
                   </p>
                 )
@@ -385,7 +485,7 @@ export function ShareForm({
                     const allFolderSelected = folderFiles.every(f => selectedFileIds.includes(f.id))
 
                     return (
-                      <div key={folderName} className="rounded-lg border border-border/60 bg-muted/20 p-2.5 space-y-1.5">
+                      <div key={folderName} className="rounded-xl border border-border/60 bg-muted/20 p-2.5 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                             <Folder className="size-3.5 text-primary" />
@@ -419,7 +519,7 @@ export function ShareForm({
                               <label
                                 key={f.id}
                                 className={cn(
-                                  "flex items-center justify-between rounded-md border px-2 py-1 text-xs cursor-pointer transition",
+                                  "flex items-center justify-between rounded-lg border px-2 py-1 text-xs cursor-pointer transition",
                                   checked
                                     ? "border-primary/40 bg-accent/40 font-medium text-foreground"
                                     : "border-border/40 bg-background text-muted-foreground hover:bg-muted/30",
@@ -490,7 +590,7 @@ export function ShareForm({
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="留空则为无密码直接访问（可输入 4 位提取码）"
-              className="h-9 text-xs font-mono"
+              className="h-9 text-xs font-mono rounded-xl"
             />
           </div>
 
@@ -509,7 +609,7 @@ export function ShareForm({
                   type="button"
                   onClick={() => setExpiryDays(item.val)}
                   className={cn(
-                    "flex-1 rounded-lg border py-1.5 text-xs font-medium transition",
+                    "flex-1 rounded-xl border py-1.5 text-xs font-medium transition",
                     expiryDays === item.val
                       ? "border-primary bg-primary text-primary-foreground shadow-xs"
                       : "border-border/80 bg-background text-muted-foreground hover:bg-accent/40",
@@ -524,7 +624,7 @@ export function ShareForm({
                 type="date"
                 value={customExpiryDate}
                 onChange={e => setCustomExpiryDate(e.target.value)}
-                className="mt-1.5 h-8 text-xs"
+                className="mt-1.5 h-8 text-xs rounded-xl"
               />
             ) : null}
           </div>
@@ -538,17 +638,17 @@ export function ShareForm({
             value={maxViews}
             onChange={e => setMaxViews(e.target.value)}
             placeholder="最大访问次数（可选，例如 5 次后失效）"
-            className="h-8.5 text-xs max-w-xs"
+            className="h-8.5 text-xs max-w-xs rounded-xl"
           />
         </div>
 
         {error ? (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+          <p className="rounded-xl bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
             {error}
           </p>
         ) : null}
 
-        <Button disabled={pending} className="w-full h-9 text-xs font-semibold gap-1.5 shadow-xs">
+        <Button disabled={pending} className="w-full h-9.5 text-xs font-semibold gap-1.5 shadow-xs rounded-xl">
           {pending ? (
             <>
               <RefreshCw className="size-3.5 animate-spin" />
@@ -563,51 +663,99 @@ export function ShareForm({
         </Button>
       </form>
 
-      {/* Generated Result Card */}
+      {/* Generated Result Card with Rich Copy Options */}
       {generatedResult ? (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4.5 space-y-3.5">
           <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
               <Check className="size-4" />
-              交付包链接已生成
+              协作交付包链接已生成
             </span>
-            <Button
-              type="button"
-              size="sm"
-              className="h-7.5 gap-1.5 text-xs font-medium shadow-xs"
-              onClick={copyHandoverText}
-            >
-              {copiedHandover ? <Check className="size-3" /> : <Copy className="size-3" />}
-              <span>{copiedHandover ? "已复制完整交付信息" : "一键复制链接与提取码"}</span>
-            </Button>
+            <span className="text-[11px] text-muted-foreground">已为您整合目标系统网址与提取码</span>
           </div>
 
-          <div className="rounded-lg bg-background/90 p-3 border border-border/60 text-xs space-y-1.5">
+          <div className="rounded-xl bg-background/95 p-3.5 border border-border/70 text-xs space-y-2">
+            {/* Target Website URL row */}
+            {resourceUrl ? (
+              <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                <span className="text-muted-foreground text-[11px] font-medium flex items-center gap-1">
+                  <Globe2 className="size-3 text-primary" />
+                  目标系统地址:
+                </span>
+                <span className="font-mono font-bold text-primary truncate max-w-sm" title={resourceUrl}>
+                  {resourceUrl}
+                </span>
+              </div>
+            ) : null}
+
+            {/* Delivery Share Link row */}
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-[11px]">分享链接:</span>
+              <span className="text-muted-foreground text-[11px] font-medium flex items-center gap-1">
+                <Link2 className="size-3 text-emerald-600" />
+                交付包链接:
+              </span>
               <a
                 href={generatedResult.url}
                 target="_blank"
                 rel="noreferrer"
-                className="text-primary hover:underline font-mono truncate max-w-sm inline-flex items-center gap-1"
+                className="text-emerald-600 dark:text-emerald-400 hover:underline font-mono font-semibold truncate max-w-sm inline-flex items-center gap-1"
               >
                 <span>{generatedResult.url}</span>
                 <ExternalLink className="size-3 shrink-0" />
               </a>
             </div>
+
+            {/* Password row */}
             {generatedResult.password ? (
-              <div className="flex items-center justify-between pt-1 border-t border-border/40">
-                <span className="text-muted-foreground text-[11px]">提取密码:</span>
+              <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                <span className="text-muted-foreground text-[11px] font-medium">提取密码:</span>
                 <span className="font-mono font-bold text-foreground text-sm tracking-wider">
                   {generatedResult.password}
                 </span>
               </div>
             ) : (
-              <div className="flex items-center justify-between pt-1 border-t border-border/40">
-                <span className="text-muted-foreground text-[11px]">提取密码:</span>
-                <span className="text-muted-foreground text-xs">无密码 (凭链接访问)</span>
+              <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                <span className="text-muted-foreground text-[11px] font-medium">提取密码:</span>
+                <span className="text-muted-foreground text-xs">无密码 (凭链接直接访问)</span>
               </div>
             )}
+          </div>
+
+          {/* Quick Copy Buttons Suite */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-semibold shadow-xs flex-1 rounded-xl"
+              onClick={copyFullHandoverText}
+            >
+              {copiedType === "full" ? <Check className="size-3.5" /> : <Sparkles className="size-3.5" />}
+              <span>{copiedType === "full" ? "已复制完整交付信息" : "一键复制完整交付信息 (含网址+提取码)"}</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-medium rounded-xl"
+              onClick={copyShortText}
+            >
+              {copiedType === "short" ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+              <span>{copiedType === "short" ? "已复制精简版" : "复制链接与提取码"}</span>
+            </Button>
+
+            {resourceUrl ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground rounded-xl"
+                onClick={copyTargetUrl}
+              >
+                {copiedType === "direct" ? <Check className="size-3 text-emerald-600" /> : <Globe2 className="size-3" />}
+                <span>{copiedType === "direct" ? "已复制网址" : "复制系统网址"}</span>
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -635,21 +783,21 @@ export function ShareForm({
                 >
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="rounded bg-primary/10 px-1.5 py-0.2 font-semibold text-[10px] text-primary">
+                      <span className="rounded-md bg-primary/10 px-1.5 py-0.2 font-semibold text-[10px] text-primary">
                         {share.type === "FILE" ? "单文件" : "交付包"}
                       </span>
                       {share.allowCredentials ? (
-                        <span className="rounded bg-amber-500/10 px-1.5 py-0.2 font-semibold text-[10px] text-amber-700 dark:text-amber-300">
+                        <span className="rounded-md bg-amber-500/10 px-1.5 py-0.2 font-semibold text-[10px] text-amber-700 dark:text-amber-300">
                           含账号密码
                         </span>
                       ) : null}
                       {share.hasPassword ? (
-                        <span className="rounded bg-muted px-1.5 py-0.2 text-[10px] font-medium text-muted-foreground">
+                        <span className="rounded-md bg-muted px-1.5 py-0.2 text-[10px] font-medium text-muted-foreground">
                           有提取码
                         </span>
                       ) : null}
                       {isExpired ? (
-                        <span className="rounded bg-destructive/10 px-1.5 py-0.2 text-[10px] font-semibold text-destructive">
+                        <span className="rounded-md bg-destructive/10 px-1.5 py-0.2 text-[10px] font-semibold text-destructive">
                           已过期
                         </span>
                       ) : null}
@@ -695,4 +843,3 @@ export function ShareForm({
     </div>
   )
 }
-

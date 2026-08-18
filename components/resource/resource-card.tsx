@@ -1,3 +1,5 @@
+"use client"
+
 import {
   BookOpen,
   Boxes,
@@ -8,16 +10,20 @@ import {
   KeyRound,
   Link2,
   Lock,
+  Share2,
   Shield,
   UserRound,
   Users2,
   Wrench,
 } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
 
 import type { Resource } from "@/lib/db/schema"
 import { ResourceDeleteButton } from "@/components/resource/resource-delete-button"
 import { ResourceFavoriteButton } from "@/components/resource/resource-favorite-button"
+import { QuickShareDialog } from "@/components/share/quick-share-dialog"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const kindMeta: Record<
@@ -87,6 +93,8 @@ export function ResourceCard({
   const visibility = visibilityMeta[resource.visibility] ?? visibilityMeta.TEAM
   const VisIcon = visibility.icon
 
+  const [showShareModal, setShowShareModal] = useState(false)
+
   let parsedTags: string[] = []
   try {
     parsedTags = JSON.parse(resource.tags ?? "[]") as string[]
@@ -99,6 +107,16 @@ export function ResourceCard({
       {/* Top right quick actions */}
       <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
         <ResourceFavoriteButton resourceId={resource.id} resourceName={resource.name} initialFavorite={isFavorite} compact />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowShareModal(true)}
+          className="size-7 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+          title="对外分享协作包"
+        >
+          <Share2 className="size-3.5" />
+        </Button>
         {mayDelete ? (
           <ResourceDeleteButton
             resourceId={resource.id}
@@ -109,6 +127,14 @@ export function ResourceCard({
           />
         ) : null}
       </div>
+
+      <QuickShareDialog
+        open={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        resourceId={resource.id}
+        resourceName={resource.name}
+        resourceUrl={resource.url}
+      />
 
       <Link href={`/resources/${resource.id}`} className="block flex-1 pr-14">
         {/* Header Badges & Icon */}

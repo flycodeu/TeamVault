@@ -309,12 +309,15 @@ export default async function ResourceDetailPage({
               <ShareForm
                 resourceId={id}
                 resourceName={resource.name}
+                resourceUrl={resource.url}
+                links={moduleLinks.map(l => ({ id: l.id, title: l.title, url: l.url, kind: l.kind }))}
                 files={resourceFiles.map(file => ({ id: file.id, name: file.originalName, folder: file.folder }))}
                 credentials={visibleCredentials.map(cred => ({
                   id: cred.id,
                   name: cred.name,
                   type: cred.type,
                   username: cred.username,
+                  linkId: cred.linkId,
                 }))}
                 activeShares={activeShares}
               />

@@ -8,8 +8,8 @@ import { writeAudit } from "@/lib/audit/log"
 import { hashPassword } from "@/lib/auth/password"
 import { getCurrentUser } from "@/lib/auth/session"
 import { db } from "@/lib/db"
-import { credentials, files, resources, shares, users } from "@/lib/db/schema"
-import { canResource, canViewCredential, canViewFile } from "@/lib/permission"
+import { credentials, files, resourceLinks, resources, shares, users } from "@/lib/db/schema"
+import { canResource, canViewCredential, canViewFile, canViewResourceLink } from "@/lib/permission"
 import { createShareToken } from "./token"
 
 export type CreateResourceShareInput = {
@@ -200,5 +200,95 @@ export async function revokeShare(id: string, resourceId?: string): Promise<Acti
     revalidatePath(`/resources/${resourceId}`)
   }
   return { success: true, data: undefined }
+}
+
+export type ResourceShareData = {
+  resourceId: string
+  resourceName: string
+  resourceUrl: string | null
+  moduleKind: string
+  description: string | null
+  links: Array<{ id: string; title: string; url: string; kind: string }>
+  credentials: Array<{ id: string; name: string; type: string; username: string | null; linkId: string | null }>
+  files: Array<{ id: string; name: string; folder: string | null; size: number }>
+  activeShares: Awaited<ReturnType<typeof getResourceActiveShares>>
+}
+
+export async function getResourceShareData(
+  resourceId: string,
+): Promise<ActionResult<ResourceShareData>> {
+  const user = await getCurrentUser()
+  if (!user) return { success: false, error: "请先登录" }
+  const resource = await db.query.resources.findFirst({
+    where: and(eq(resources.id, resourceId), isNull(resources.deletedAt)),
+  })
+  if (!resource || resource.sensitivity === "SECRET") {
+    return { success: false, error: "高度机密资源禁止外部分享" }
+  }
+  if (!(await canResource(resourceId, "SHARE")) && !user.isAdmin) {
+    return { success: false, error: "无权分享该模块" }
+  }
+
+  const [allCredentials, allFiles, allLinks, activeShares] = await Promise.all([
+    db.query.credentials.findMany({ where: eq(credentials.resourceId, resourceId) }),
+    (user.isAdmin || (await canViewFile(resourceId)))
+      ? db.query.files.findMany({ where: eq(files.resourceId, resourceId) })
+      : [],
+    db.query.resourceLinks.findMany({ where: eq(resourceLinks.resourceId, resourceId) }),
+    getResourceActiveShares(resourceId),
+  ])
+
+  const visibleCredentials = (
+    await Promise.all(
+      allCredentials.map(async c => ({
+        credential: c,
+        allowed: user.isAdmin || (await canViewCredential(c.id)),
+      })),
+    )
+  )
+    .filter(item => item.allowed)
+    .map(item => ({
+      id: item.credential.id,
+      name: item.credential.name,
+      type: item.credential.type,
+      username: item.credential.username,
+      linkId: item.credential.linkId,
+    }))
+
+  const visibleLinks = (
+    await Promise.all(
+      allLinks.map(async link => ({
+        link,
+        allowed: user.isAdmin || (await canViewResourceLink(link.id)),
+      })),
+    )
+  )
+    .filter(item => item.allowed)
+    .map(item => ({
+      id: item.link.id,
+      title: item.link.title,
+      url: item.link.url,
+      kind: item.link.kind,
+    }))
+
+  return {
+    success: true,
+    data: {
+      resourceId: resource.id,
+      resourceName: resource.name,
+      resourceUrl: resource.url,
+      moduleKind: resource.moduleKind,
+      description: resource.description,
+      links: visibleLinks,
+      credentials: visibleCredentials,
+      files: allFiles.map(f => ({
+        id: f.id,
+        name: f.originalName,
+        folder: f.folder,
+        size: f.size,
+      })),
+      activeShares,
+    },
+  }
 }
 

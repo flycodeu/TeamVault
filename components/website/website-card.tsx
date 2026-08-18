@@ -10,6 +10,7 @@ import {
   Globe2,
   KeyRound,
   Lock,
+  Share2,
   Shield,
   ShieldCheck,
   User,
@@ -20,6 +21,7 @@ import { useState, useTransition } from "react"
 
 import { ResourceDeleteButton } from "@/components/resource/resource-delete-button"
 import { ResourceFavoriteButton } from "@/components/resource/resource-favorite-button"
+import { QuickShareDialog } from "@/components/share/quick-share-dialog"
 import { Button } from "@/components/ui/button"
 import { revealCredential } from "@/lib/credential/actions"
 import type { Credential, Resource } from "@/lib/db/schema"
@@ -49,6 +51,7 @@ export function WebsiteCard({
   const [copiedUser, setCopiedUser] = useState<string | null>(null)
   const [copiedPass, setCopiedPass] = useState<string | null>(null)
   const [revealedSecrets, setRevealedSecrets] = useState<Record<string, string>>({})
+  const [showShareModal, setShowShareModal] = useState(false)
   const [, startTransition] = useTransition()
 
   const visibility = visibilityMeta[website.visibility] ?? visibilityMeta.TEAM
@@ -99,7 +102,7 @@ export function WebsiteCard({
 
   return (
     <article className="h-full group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-4.5 md:p-5 shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md hover:shadow-primary/5">
-      {/* Top Bar Actions: Favorite, Edit, Delete */}
+      {/* Top Bar Actions: Favorite, Share, Edit, Delete */}
       <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
         <ResourceFavoriteButton
           resourceId={website.id}
@@ -107,6 +110,16 @@ export function WebsiteCard({
           initialFavorite={isFavorite}
           compact
         />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowShareModal(true)}
+          className="size-7 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+          title="对外分享协作包"
+        >
+          <Share2 className="size-3.5" />
+        </Button>
         <Button
           asChild
           variant="ghost"
@@ -128,6 +141,21 @@ export function WebsiteCard({
           />
         ) : null}
       </div>
+
+      <QuickShareDialog
+        open={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        resourceId={website.id}
+        resourceName={website.name}
+        resourceUrl={website.url}
+        initialCredentials={website.credentials.map(c => ({
+          id: c.id,
+          name: c.name,
+          type: c.type,
+          username: c.username,
+          linkId: c.linkId,
+        }))}
+      />
 
       <div className="pr-20">
         {/* Header Icon + Title */}

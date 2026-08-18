@@ -116,18 +116,17 @@ export default async function SharePage({
     specificCredentialIds = null
   }
 
-  const [allResourceFiles, links, allCredentials] = await Promise.all([
+  const [allResourceFiles, allResourceLinks, allCredentials] = await Promise.all([
     db.query.files.findMany({ where: eq(files.resourceId, resource.id) }),
     db.query.resourceLinks.findMany({
-      where: and(
-        eq(resourceLinks.resourceId, resource.id),
-        eq(resourceLinks.accessMode, "RESOURCE"),
-      ),
+      where: eq(resourceLinks.resourceId, resource.id),
     }),
     share.allowCredentials
       ? db.query.credentials.findMany({ where: eq(credentials.resourceId, resource.id) })
       : [],
   ])
+
+  const linkMap = new Map(allResourceLinks.map(l => [l.id, l]))
 
   const visibleFiles = specificFileIds
     ? allResourceFiles.filter(f => specificFileIds!.includes(f.id))
@@ -151,6 +150,11 @@ export default async function SharePage({
     } catch {
       extra = null
     }
+
+    const matchedLink = c.linkId ? linkMap.get(c.linkId) : null
+    const targetUrl = matchedLink?.url ?? resource.url ?? null
+    const targetUrlTitle = matchedLink?.title ?? (resource.url ? "系统主站点" : null)
+
     return {
       id: c.id,
       name: c.name,
@@ -159,8 +163,14 @@ export default async function SharePage({
       secret,
       extra,
       description: c.description,
+      targetUrl,
+      targetUrlTitle,
     }
   })
+
+  // Links visible on the page: standard RESOURCE links, or any link referenced by visible credentials
+  const referencedLinkIds = new Set(visibleCredentialsRaw.map(c => c.linkId).filter(Boolean) as string[])
+  const visibleLinks = allResourceLinks.filter(l => l.accessMode === "RESOURCE" || referencedLinkIds.has(l.id))
 
   return (
     <ShareShell share={share}>
@@ -195,10 +205,10 @@ export default async function SharePage({
               <span>系统访问地址</span>
             </div>
             <a
-              href={resource.url}
+              href={resource.url.startsWith("http") ? resource.url : `https://${resource.url}`}
               target="_blank"
               rel="noreferrer"
-              className="group flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 transition duration-200 hover:border-primary/60 hover:bg-primary/10 hover:shadow-xs"
+              className="group flex items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4 transition duration-200 hover:border-primary/60 hover:bg-primary/10 hover:shadow-xs"
             >
               <div className="min-w-0">
                 <p className="truncate font-mono text-sm font-bold text-primary group-hover:underline">
@@ -206,7 +216,7 @@ export default async function SharePage({
                 </p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">点击在新标签页中直接打开系统</p>
               </div>
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-2xs">
                 <ExternalLink className="size-4" />
               </span>
             </a>
@@ -214,14 +224,14 @@ export default async function SharePage({
         ) : null}
 
         {/* 2. Additional Links */}
-        {links.length ? (
+        {visibleLinks.length ? (
           <section className="space-y-2.5">
             <h2 className="text-xs font-bold text-foreground">相关网站与文档入口</h2>
             <div className="grid gap-2.5 sm:grid-cols-2">
-              {links.map(link => (
+              {visibleLinks.map(link => (
                 <a
                   key={link.id}
-                  href={link.url}
+                  href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center justify-between rounded-xl border border-border/80 bg-background/80 p-3 shadow-xs transition hover:border-primary/40 hover:bg-accent/20"
